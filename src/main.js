@@ -65,8 +65,6 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
   })
 
   bot.on('message', message => {
-    Array.forEach(registeredListeners, (cb) => setTimeout(() => cb(bot, message)))
-
     if (message.content.indexOf('!') === 0) {
       const args = [...getCommand(message.content.substr(1))]
       const cmd = args.shift().toLowerCase().trim()
@@ -78,7 +76,10 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
         return
       }
 
+      Array.forEach(registeredListeners, (cb) => setTimeout(() => cb(bot, message, cmd, args)))
       Array.forEach(command, (cmd) => setTimeout(() => cmd.fn(bot, message, args)))
+    } else {
+      Array.forEach(registeredListeners, (cb) => setTimeout(() => cb(bot, message, false)))
     }
   })
 
