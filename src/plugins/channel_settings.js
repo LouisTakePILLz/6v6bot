@@ -3,6 +3,7 @@ import * as utils from '~/utils'
 const PERM_SETCHANNEL = 'setChannel'
 const PERM_SETLOBBY = 'setLobby'
 const PERM_SETVOICE = 'setVoice'
+const PERM_DELETECHANNEL = 'deleteChannel'
 const PERM_CHANNELS = 'channels'
 
 const TEAM_NAMES = {
@@ -43,6 +44,45 @@ const commands = (api) => ({
       })
   },
 
+  deleteChannel(bot, message, args) {
+    const { author } = message
+
+    api.permissions.checkPermission(message, PERM_DELETECHANNEL).or(PERM_CHANNELS)
+      .then((granted) => {
+        if (granted) {
+          const query = { guildId: message.guild.id, setting: 'commandChannels' }
+
+          api.db.collection('guilds').update(query, { $pull: { values: message.channel.id } })
+            .then((e) => {
+              if (e.result.nModified === 0) {
+                message.channel.send('This text channel is not a registered command channel')
+                return false
+              }
+              else {
+                const query = { guildId: message.guild.id, cmdChannelId: message.channel.id, setting: 'voiceChannel' }
+                return api.db.collection('guilds').deleteMany(query)
+              }
+            })
+            .catch((err) => {
+              console.log('deleteChannel DB ERROR 1', err)
+              message.channel.send('An error occured while trying to delete the command channel')
+            })
+            .then((e) => {
+              if (!e) {
+                return
+              }
+              message.channel.send('Command channel successfully deleted')
+            })
+            .catch((err) => {
+              console.log('deleteChannel DB ERROR 2', err)
+              message.channel.send('An error occured while trying to delete the associated voice channels')
+            })
+        } else {
+          message.channel.send('You don\'t have permission to remove command channels')
+        }
+      })
+  },
+
   setLobby(bot, message, args) {
     const { author } = message
 
@@ -60,7 +100,6 @@ const commands = (api) => ({
               return
             }
 
-            console.log(doc)
             if (doc == null) {
               message.channel.send('This text channel is not a registered command channel')
               return
@@ -177,4 +216,5 @@ export default function load(api) {
   register('setchannel', 'Sets the channel to use to control and administrate the 6v6 lobby', cmds.setChannel)
   register('setlobby', 'Sets the current voice channel as the lobby for regrouping players before and after games', cmds.setLobby)
   register('setvoice', 'Sets the current voice channel as the voice channel for a specified team', cmds.setVoice)
+  register('deletechannel', 'Unregisters the channel as a 6v6 lobby command channel', cmds.deleteChannel)
 }

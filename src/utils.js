@@ -12,7 +12,7 @@ export function isPositiveInteger(input) {
 
 export function getUserVoiceChannel(bot, guild, user) {
   return guild.channels.find((channel) => {
-    if (channel.members.find((member) => member.id === user.id) != null) {
+    if (channel.type === 'voice' && channel.members.find((member) => member.id === user.id) != null) {
       return true
     }
 
