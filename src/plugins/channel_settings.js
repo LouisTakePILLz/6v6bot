@@ -174,7 +174,7 @@ export default function load(api) {
   permissions.registerPermission(PERM_SETVOICE, 'Allows using the !setvoice command')
   permissions.registerPermission(PERM_CHANNELS, 'Allows using all the commands related to channel configuration')
 
-  register('setchannel', 'Sets the channel to use to administrate 6v6 lobbies', cmds.setChannel)
+  register('setchannel', 'Sets the channel to use to control and administrate the 6v6 lobby', cmds.setChannel)
   register('setlobby', 'Sets the current voice channel as the lobby for regrouping players before and after games', cmds.setLobby)
-  register('setvoice', 'Sets the current voice channel as the voice channel for a given team', cmds.setVoice)
+  register('setvoice', 'Sets the current voice channel as the voice channel for a specified team', cmds.setVoice)
 }

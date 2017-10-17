@@ -51,11 +51,7 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
       return registeredCommands
     },
     registerCommand(command, helpText, fn) {
-      registeredCommands[command] = registeredCommands[command] || []
-      registeredCommands[command].push({
-        fn,
-        helpText
-      })
+      registeredCommands[command] = { fn, helpText }
     },
     registerRaw(fn) {
       registeredListeners.push(fn)
@@ -71,13 +67,13 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
       const command = registeredCommands[cmd]
       console.log(message.author.id)
 
-      if (!command || !command.length) {
+      if (!command) {
         message.channel.send(`Unknown command: \`${utils.sanitizeCode(cmd)}\``)
         return
       }
 
       Array.forEach(registeredListeners, (cb) => setTimeout(() => cb(bot, message, cmd, args)))
-      Array.forEach(command, (cmd) => setTimeout(() => cmd.fn(bot, message, args)))
+      setTimeout(() => command.fn(bot, message, args))
     } else {
       Array.forEach(registeredListeners, (cb) => setTimeout(() => cb(bot, message, false)))
     }
