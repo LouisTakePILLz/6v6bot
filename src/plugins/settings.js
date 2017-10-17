@@ -1,6 +1,13 @@
 const PERM_SETCHANNEL = 'setChannel'
 const PERM_SETLOBBY = 'setLobby'
+const PERM_SETVOICE = 'setVoice'
 const PERM_CHANNELS = 'channels'
+
+const TEAM_NAMES = {
+  team1: 'Team 1',
+  team2: 'Team 2'
+}
+const TEAM_NAMES_LIST = Object.keys(TEAM_NAMES).map(x => '`' + x + '`').join(', ')
 
 const commands = (api) => ({
 
@@ -57,7 +64,7 @@ const commands = (api) => ({
             }
 
             if (voiceChannel == null) {
-              bot.sendMessage(message, 'You must be connected to a voice channel to set the lobby')
+              bot.sendMessage(message, 'You must be connected to a voice channel to set the voice channel for ')
               return
             }
 
@@ -86,6 +93,71 @@ const commands = (api) => ({
           bot.reply(message, 'You don\'t have permission to set the lobby channel')
         }
       })
+  },
+
+  setVoice(bot, message, args) {
+    const { author } = message
+
+    api.permissions.checkPermission(message, PERM_SETVOICE).or(PERM_CHANNELS)
+      .then((granted) => {
+        if (granted) {
+          const { voiceChannel } = author
+
+          const cmdChannelQuery = { serverId: message.server.id, setting: 'commandChannels', values: { $all: [message.channel.id] } }
+
+          api.db.collection('servers').findOne(cmdChannelQuery, (err, doc) => {
+
+            if (err) {
+              console.log('setLobby DB ERROR 1', err)
+              return
+            }
+
+            if (doc == null) {
+              bot.sendMessage(message, 'This text channel is not a registered command channel')
+              return
+            }
+
+            if (args.length === 0) {
+              bot.sendMessage(message, 'You must specify the name of the team you want to set the voice channel for. Possible values: ' + TEAM_NAMES_LIST)
+              return
+            }
+
+            const team = args[0]
+            if (TEAM_NAMES[team] == null) {
+              bot.sendMessage(message, 'The specified team name is invalid. Possible values: ' + TEAM_NAMES_LIST)
+              return
+            }
+
+            if (voiceChannel == null) {
+              bot.sendMessage(message, 'You must be connected to a voice channel to set the voice channel for ' + TEAM_NAMES[team])
+              return
+            }
+
+
+            const voiceChannelQuery = { serverId: message.server.id, cmdChannelId: message.channel.id, setting: 'voiceChannel', teamName: team }
+
+            api.db.collection('servers').update(voiceChannelQuery, { $set: { value: voiceChannel.id } }, { upsert: true }, (err, numAffected) => {
+              if (err) {
+                console.log('setVoice DB ERROR 2', err)
+
+                bot.sendMessage(message, 'An error occured while trying to set the lobby voice channel')
+
+                return
+              }
+
+              bot.sendMessage(message, 'Team voice channel successfully set for ' + TEAM_NAMES[team], undefined, (err) => {
+                if (err) {
+                  console.log('setVoice FAILED TO SEND SUCCESS MESSAGE')
+                  return
+                }
+              })
+            })
+
+          })
+        } else {
+          bot.reply(message, 'You don\'t have permission to set the lobby channel')
+        }
+      })
   }
 
 })
@@ -96,10 +168,10 @@ export default function load(api) {
 
   permissions.registerPermission(PERM_SETCHANNEL, 'Allows using the !setchannel command')
   permissions.registerPermission(PERM_SETLOBBY, 'Allows using the !setlobby command')
+  permissions.registerPermission(PERM_SETVOICE, 'Allows using the !setvoice command')
+  permissions.registerPermission(PERM_CHANNELS, 'Allows using all the commands related to channel configuration')
 
   register('setchannel', 'Sets the channel to use to administrate 6v6 lobbies', cmds.setChannel)
   register('setlobby', 'Sets the current voice channel as the lobby for regrouping players before and after games', cmds.setLobby)
-  register('debug', 'debug', (bot, message, args) => {
-    api.permissions.grantPermission(message, 'channels')
-  })
+  register('setvoice', 'Sets the current voice channel as the voice channel for a given team', cmds.setVoice)
 }
