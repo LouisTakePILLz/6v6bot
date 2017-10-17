@@ -1,10 +1,11 @@
 export function sanitizeCode(input) {
-  if (typeof input !== 'string')
-    return;
+  if (typeof input !== 'string') {
+    return
+  }
 
-  return input.replace('`', '\'');
+  return input.replace('`', '\'')
 }
 
 export function isPositiveInteger(input) {
-  return /^\+?(0|[1-9]\d*)$/.test(input);
+  return /^\+?(0|[1-9]\d*)$/.test(input)
 }

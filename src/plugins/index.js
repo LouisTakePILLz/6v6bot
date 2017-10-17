@@ -1,12 +1,12 @@
-import bulk from 'bulk-require';
+import bulk from 'bulk-require'
 
-const modules = bulk(__dirname, ['./**/!(*index|*.spec).js']);
+const modules = bulk(__dirname, ['./**/!(*index|*.spec).js'])
 
-const plugins = [];
+const plugins = []
 
 Object.keys(modules).forEach((key) => {
-    let item = modules[key].default;
-    plugins.push(item);
-});
+  const item = modules[key].default
+  plugins.push(item)
+})
 
-export default plugins;
+export default plugins

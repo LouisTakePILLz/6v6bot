@@ -60,11 +60,9 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
     }
   }
 
-  Array.forEach(plugins, plugin => {
-    plugin(PluginAPI)
-  })
+  Array.forEach(plugins, plugin => plugin(PluginAPI))
 
-  bot.on('message', message => {
+  bot.on('message', (message) => {
     if (message.content.indexOf('!') === 0) {
       const args = [...getCommand(message.content.substr(1))]
       const cmd = args.shift().toLowerCase().trim()

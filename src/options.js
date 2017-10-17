@@ -1,5 +1,5 @@
-import parseArgs from 'minimist';
+import parseArgs from 'minimist'
 
-const params = parseArgs(process.argv.slice(2));
+const params = parseArgs(process.argv.slice(2))
 
-export default params;
+export default params
