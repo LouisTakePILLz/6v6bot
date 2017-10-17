@@ -1,4 +1,4 @@
-const OWNERSHIP_NODE = '$ownership'
+const PERM_OWNERSHIP = '$ownership'
 
 export default function(db, bot) {
   const permissions = []
@@ -6,36 +6,42 @@ export default function(db, bot) {
 
   const permissionsApi = {}
 
-  function extendPermissionPromise(aaa, server, user, promise) {
-    promise.then((ok) => console.log('node: ' + aaa + ' - ' + (ok ? 'yes' : 'no')))
-
+  function extendPermissionPromise(server, user, promise) {
     return Object.assign(promise, {
       and(node) {
-        return extendPermissionPromise(node, server, user, new Promise((resolve, reject) => {
-          promise.then((ok) => {
-            if (ok && permissionsApi.hasPermission(server, user, node)) {
-              resolve(true)
-            } else {
-              resolve(false)
-            }
+        return extendPermissionPromise(server, user, new Promise((resolve, reject) => {
+          promise.then((result1) => {
+            permissionsApi.checkPermission(server, user, node).then((result2) => {
+              if (result1 && result2) {
+                resolve(true)
+              } else {
+                resolve(false)
+              }
+            })
           })
         }))
       },
       or(node) {
-        return extendPermissionPromise(node, server, user, new Promise((resolve, reject) => {
-          promise.then((ok) => {
-            if (ok || permissionsApi.hasPermission(server, user, node)) {
+        return extendPermissionPromise(server, user, new Promise((resolve, reject) => {
+          promise.then((result1) => {
+            if (result1) {
               resolve(true)
-            } else {
-              resolve(false)
+              return
             }
+            permissionsApi.checkPermission(server, user, node).then((result2) => {
+              if (result2) {
+                resolve(true)
+              } else {
+                resolve(false)
+              }
+            })
           })
         }))
       }
     })
   }
 
-  permissionsApi.hasPermission = (...args) => {
+  permissionsApi.checkPermission = (...args) => {
     let server = args[0]
     let user = args[1]
     let node = args[2]
@@ -47,9 +53,9 @@ export default function(db, bot) {
     }
 
     const promise = new Promise((resolve, reject) => {
-      permissionsDb.findOne({ serverId: server.id, userId: user.id, node: { $in: [node, OWNERSHIP_NODE] } }, (err, doc) => {
+      permissionsDb.findOne({ serverId: server.id, userId: user.id, node: { $in: [node, PERM_OWNERSHIP] } }, (err, doc) => {
         if (err) {
-          console.log('hasPermission DB ERROR', err)
+          console.log('checkPermission DB ERROR', err)
 
           reject()
 
@@ -61,7 +67,7 @@ export default function(db, bot) {
       })
     })
 
-    return extendPermissionPromise(node, server, user, promise)
+    return extendPermissionPromise(server, user, promise)
   }
 
   permissionsApi.grantPermission = (...args) => {

@@ -1,11 +1,12 @@
 const PERM_SETCHANNEL = 'setChannel'
 const PERM_SETLOBBY = 'setLobby'
+const PERM_CHANNELS = 'channels'
 
 const commands = (api) => ({
   setChannel(bot, message, args) {
     const { author } = message
 
-    api.permissions.hasPermission(message, PERM_SETCHANNEL).or('admin').or('channels')
+    api.permissions.checkPermission(message, PERM_SETCHANNEL).or(PERM_CHANNELS)
       .then((granted) => {
         if (granted) {
           const query = { serverId: message.server.id, setting: 'commandChannel' }
@@ -33,10 +34,9 @@ const commands = (api) => ({
   },
   setLobby(bot, message, args) {
     const { author } = message
-    api.permissions.hasPermission(message, PERM_SETLOBBY).or('admin').or('channels')
+    api.permissions.checkPermission(message, PERM_SETLOBBY).or(PERM_CHANNELS)
       .then((granted) => {
         if (granted) {
-          bot.reply(message, 'WUT')
         } else {
           bot.reply(message, 'You don\'t have permission to set the lobby channel')
         }
