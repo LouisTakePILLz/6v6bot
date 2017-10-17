@@ -20,39 +20,39 @@ export default function load({registerCommand: register, permissions}) {
         if (granted) {
           const action = args[0]
 
-          if (action === 'list') {
+          permissions.getPermissions().then((permNodes) => {
+            if (permNodes.length === 0) {
+              console.log('No permissions registered?')
+              return
+            }
 
-            const permNodes = permissions.getPermissions()
-              .then((permNodes) => {
-                if (permNodes.length === 0) {
-                  return
-                }
+            if (action === 'list') {
 
-                const embed = new RichEmbed()
-                  .setTitle('6v6 - Permissions')
-                  .setColor(0xA94AE8)
-                  .setTimestamp()
+              const embed = new RichEmbed()
+                .setTitle('6v6 - Permissions')
+                .setColor(0xA94AE8)
+                .setTimestamp()
 
-                const maxPage = Math.ceil(Math.max(permNodes.length / PERMS_PER_PAGE, 1))
-                const page = Math.max(Math.min(Number(args[1]) || 1, maxPage), 1)
+              const maxPage = Math.ceil(Math.max(permNodes.length / PERMS_PER_PAGE, 1))
+              const page = Math.max(Math.min(Number(args[1]) || 1, maxPage), 1)
 
-                embed.setFooter('page ' + page + ' of ' + maxPage, 'https://cdn.discordapp.com/embed/avatars/0.png')
+              embed.setFooter('page ' + page + ' of ' + maxPage, 'https://cdn.discordapp.com/embed/avatars/0.png')
 
-                const lastPermNode = Math.min(page * PERMS_PER_PAGE, permNodes.length)
-                for (let i = (page - 1) * PERMS_PER_PAGE; i < lastPermNode; i++) {
-                  const permNode = permNodes[i]
-                  embed.addField('`' + permNode.node + '`' , permNode.helpText, false)
-                }
+              const lastPermNode = Math.min(page * PERMS_PER_PAGE, permNodes.length)
+              for (let i = (page - 1) * PERMS_PER_PAGE; i < lastPermNode; i++) {
+                const permNode = permNodes[i]
+                embed.addField('`' + permNode.node + '`' , permNode.helpText, false)
+              }
 
-                message.channel.send({embed})
-            })
+              message.channel.send({embed})
 
-          } else if (action === 'grant') {
-          } else if (action === 'revoke') {
-          } else if (action === 'clear') {
-          } else {
-            message.channel.send('Invalid action name, check !help perm for the usage information')
-          }
+            } else if (action === 'grant') {
+            } else if (action === 'revoke') {
+            } else if (action === 'clear') {
+            } else {
+              message.channel.send('Invalid action name, check !help perm for the usage information')
+            }
+          })
         } else {
           message.channel.send('You don\'t have permission to manage permissions')
         }
