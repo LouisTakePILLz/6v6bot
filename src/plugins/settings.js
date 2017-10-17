@@ -3,15 +3,16 @@ const PERM_SETLOBBY = 'setLobby'
 const PERM_CHANNELS = 'channels'
 
 const commands = (api) => ({
+
   setChannel(bot, message, args) {
     const { author } = message
 
     api.permissions.checkPermission(message, PERM_SETCHANNEL).or(PERM_CHANNELS)
       .then((granted) => {
         if (granted) {
-          const query = { serverId: message.server.id, setting: 'commandChannel' }
+          const query = { serverId: message.server.id, setting: 'commandChannels' }
 
-          api.db.collection('servers').update(query, { value: message.channel.id, ...query }, { upsert: true }, (err, numAffected) => {
+          api.db.collection('servers').update(query, { $addToSet: { values: message.channel.id } }, { upsert: true }, (err, numAffected) => {
             if (err) {
               console.log('setChannel DB ERROR', err)
 
@@ -32,16 +33,61 @@ const commands = (api) => ({
         }
       })
   },
+
   setLobby(bot, message, args) {
     const { author } = message
+
     api.permissions.checkPermission(message, PERM_SETLOBBY).or(PERM_CHANNELS)
       .then((granted) => {
         if (granted) {
+          const { voiceChannel } = author
+
+          const cmdChannelQuery = { serverId: message.server.id, setting: 'commandChannels', values: { $all: [message.channel.id] } }
+
+          api.db.collection('servers').findOne(cmdChannelQuery, (err, doc) => {
+
+            if (err) {
+              console.log('setLobby DB ERROR 1', err)
+              return
+            }
+
+            if (doc == null) {
+              bot.sendMessage(message, 'This text channel is not a registered command channel')
+              return
+            }
+
+            if (voiceChannel == null) {
+              bot.sendMessage(message, 'You must be connected to a voice channel to set the lobby')
+              return
+            }
+
+
+            const lobbyChannelQuery = { serverId: message.server.id, cmdChannelId: message.channel.id, setting: 'lobbyChannel' }
+
+            api.db.collection('servers').update(lobbyChannelQuery, { $set: { value: voiceChannel.id } }, { upsert: true }, (err, numAffected) => {
+              if (err) {
+                console.log('setLobby DB ERROR 2', err)
+
+                bot.sendMessage(message, 'An error occured while trying to set the lobby voice channel')
+
+                return
+              }
+
+              bot.sendMessage(message, 'Lobby voice channel successfully set', undefined, (err) => {
+                if (err) {
+                  console.log('setLobby FAILED TO SEND SUCCESS MESSAGE')
+                  return
+                }
+              })
+            })
+
+          })
         } else {
           bot.reply(message, 'You don\'t have permission to set the lobby channel')
         }
       })
   }
+
 })
 
 export default function load(api) {
