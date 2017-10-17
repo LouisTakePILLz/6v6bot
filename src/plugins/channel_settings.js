@@ -211,6 +211,7 @@ export default function load(api) {
   permissions.registerPermission(PERM_SETCHANNEL, 'Allows using the !setchannel command')
   permissions.registerPermission(PERM_SETLOBBY, 'Allows using the !setlobby command')
   permissions.registerPermission(PERM_SETVOICE, 'Allows using the !setvoice command')
+  permissions.registerPermission(PERM_DELETECHANNEL, 'Allows using the !deletechannel command')
   permissions.registerPermission(PERM_CHANNELS, 'Allows using all the commands related to channel configuration')
 
   register('setchannel', 'Sets the channel to use to control and administrate the 6v6 lobby', cmds.setChannel)
