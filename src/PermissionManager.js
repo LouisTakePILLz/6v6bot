@@ -6,12 +6,12 @@ export default function(db, bot) {
 
   const permissionsApi = {}
 
-  function extendPermissionPromise(server, user, promise) {
+  function extendPermissionPromise(guild, user, promise) {
     return Object.assign(promise, {
       and(node) {
-        return extendPermissionPromise(server, user, new Promise((resolve, reject) => {
+        return extendPermissionPromise(guild, user, new Promise((resolve, reject) => {
           promise.then((result1) => {
-            permissionsApi.checkPermission(server, user, node).then((result2) => {
+            permissionsApi.checkPermission(guild, user, node).then((result2) => {
               if (result1 && result2) {
                 resolve(true)
               } else {
@@ -22,13 +22,13 @@ export default function(db, bot) {
         }))
       },
       or(node) {
-        return extendPermissionPromise(server, user, new Promise((resolve, reject) => {
+        return extendPermissionPromise(guild, user, new Promise((resolve, reject) => {
           promise.then((result1) => {
             if (result1) {
               resolve(true)
               return
             }
-            permissionsApi.checkPermission(server, user, node).then((result2) => {
+            permissionsApi.checkPermission(guild, user, node).then((result2) => {
               if (result2) {
                 resolve(true)
               } else {
@@ -42,18 +42,18 @@ export default function(db, bot) {
   }
 
   permissionsApi.checkPermission = (...args) => {
-    let server = args[0]
+    let guild = args[0]
     let user = args[1]
     let node = args[2]
 
     if (args.length < 3) {
-      server = args[0].server
+      guild = args[0].channel.guild
       user = args[0].author
       node = args[1]
     }
 
     const promise = new Promise((resolve, reject) => {
-      permissionsDb.findOne({ serverId: server.id, userId: user.id, node: { $in: [node, PERM_OWNERSHIP] } }, (err, doc) => {
+      permissionsDb.findOne({ guildId: guild.id, userId: user.id, node: { $in: [node, PERM_OWNERSHIP] } }, (err, doc) => {
         if (err) {
           console.log('checkPermission DB ERROR', err)
 
@@ -67,22 +67,22 @@ export default function(db, bot) {
       })
     })
 
-    return extendPermissionPromise(server, user, promise)
+    return extendPermissionPromise(guild, user, promise)
   }
 
   permissionsApi.grantPermission = (...args) => {
-    let server = args[0]
+    let guild = args[0]
     let user = args[1]
     let node = args[2]
 
     if (args.length < 3) {
-      server = args[0].server
+      guild = args[0].guild
       user = args[0].author
       node = args[1]
     }
 
     return new Promise((resolve, reject) => {
-      permissionsDb.insert({ serverId: server.id, userId: user.id, node }, (err) => {
+      permissionsDb.insert({ guildId: guild.id, userId: user.id, node }, (err) => {
         if (err) {
           console.log('grantPermission DB ERROR', err)
 
@@ -97,18 +97,18 @@ export default function(db, bot) {
   }
 
   permissionsApi.revokePermission = (...args) => {
-    let server = args[0]
+    let guild = args[0]
     let user = args[1]
     let node = args[2]
 
     if (args.length < 3) {
-      server = args[0].server
+      guild = args[0].guild
       user = args[0].author
       node = args[1]
     }
 
     return new Promise((resolve, reject) => {
-      permissionsDb.remove({ serverId: serverId, userId: user.id, node }, { multi: true }, (err, numberRemoved) => {
+      permissionsDb.remove({ guildId: guildId, userId: user.id, node }, { multi: true }, (err, numberRemoved) => {
         if (err) {
           console.log('revokePermission DB ERROR', err)
 

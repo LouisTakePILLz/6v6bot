@@ -1,3 +1,5 @@
+import * as utils from '~/utils'
+
 const PERM_SETCHANNEL = 'setChannel'
 const PERM_SETLOBBY = 'setLobby'
 const PERM_SETVOICE = 'setVoice'
@@ -17,18 +19,18 @@ const commands = (api) => ({
     api.permissions.checkPermission(message, PERM_SETCHANNEL).or(PERM_CHANNELS)
       .then((granted) => {
         if (granted) {
-          const query = { serverId: message.server.id, setting: 'commandChannels' }
+          const query = { guildId: message.guild.id, setting: 'commandChannels' }
 
-          api.db.collection('servers').update(query, { $addToSet: { values: message.channel.id } }, { upsert: true }, (err, numAffected) => {
+          api.db.collection('guilds').update(query, { $addToSet: { values: message.channel.id } }, { upsert: true }, (err, numAffected) => {
             if (err) {
               console.log('setChannel DB ERROR', err)
 
-              bot.sendMessage(message, 'An error occured while trying to set the command channel')
+              message.channel.send('An error occured while trying to set the command channel')
 
               return
             }
 
-            bot.sendMessage(message, 'Command channel successfully set', undefined, (err, confirmationMsg) => {
+            message.channel.send('Command channel successfully set', undefined, (err, confirmationMsg) => {
               if (err) {
                 console.log('setChannel FAILED TO SEND SUCCESS MESSAGE')
                 return
@@ -36,7 +38,7 @@ const commands = (api) => ({
             })
           })
         } else {
-          bot.reply(message, 'You don\'t have permission to set the command channel')
+          message.channel.send('You don\'t have permission to set the command channel')
         }
       })
   },
@@ -47,40 +49,41 @@ const commands = (api) => ({
     api.permissions.checkPermission(message, PERM_SETLOBBY).or(PERM_CHANNELS)
       .then((granted) => {
         if (granted) {
-          const { voiceChannel } = author
+          const voiceChannel = utils.getUserVoiceChannel(bot, message.guild, message.author)
 
-          const cmdChannelQuery = { serverId: message.server.id, setting: 'commandChannels', values: { $all: [message.channel.id] } }
+          const cmdChannelQuery = { guildId: message.guild.id, setting: 'commandChannels', values: { $all: [message.channel.id] } }
 
-          api.db.collection('servers').findOne(cmdChannelQuery, (err, doc) => {
+          api.db.collection('guilds').findOne(cmdChannelQuery, (err, doc) => {
 
             if (err) {
               console.log('setLobby DB ERROR 1', err)
               return
             }
 
+            console.log(doc)
             if (doc == null) {
-              bot.sendMessage(message, 'This text channel is not a registered command channel')
+              message.channel.send('This text channel is not a registered command channel')
               return
             }
 
             if (voiceChannel == null) {
-              bot.sendMessage(message, 'You must be connected to a voice channel to set the voice channel for ')
+              message.channel.send('You must be connected to a voice channel to set the lobby voice channel')
               return
             }
 
 
-            const lobbyChannelQuery = { serverId: message.server.id, cmdChannelId: message.channel.id, setting: 'lobbyChannel' }
+            const lobbyChannelQuery = { guildId: message.guild.id, cmdChannelId: message.channel.id, setting: 'lobbyChannel' }
 
-            api.db.collection('servers').update(lobbyChannelQuery, { $set: { value: voiceChannel.id } }, { upsert: true }, (err, numAffected) => {
+            api.db.collection('guilds').update(lobbyChannelQuery, { $set: { value: voiceChannel.id } }, { upsert: true }, (err, numAffected) => {
               if (err) {
                 console.log('setLobby DB ERROR 2', err)
 
-                bot.sendMessage(message, 'An error occured while trying to set the lobby voice channel')
+                message.channel.send('An error occured while trying to set the lobby voice channel')
 
                 return
               }
 
-              bot.sendMessage(message, 'Lobby voice channel successfully set', undefined, (err) => {
+              message.channel.send('Lobby voice channel successfully set', undefined, (err) => {
                 if (err) {
                   console.log('setLobby FAILED TO SEND SUCCESS MESSAGE')
                   return
@@ -90,7 +93,7 @@ const commands = (api) => ({
 
           })
         } else {
-          bot.reply(message, 'You don\'t have permission to set the lobby channel')
+          message.channel.send('You don\'t have permission to set the lobby channel')
         }
       })
   },
@@ -101,11 +104,11 @@ const commands = (api) => ({
     api.permissions.checkPermission(message, PERM_SETVOICE).or(PERM_CHANNELS)
       .then((granted) => {
         if (granted) {
-          const { voiceChannel } = author
+          const voiceChannel = utils.getUserVoiceChannel(bot, message.guild, message.author)
 
-          const cmdChannelQuery = { serverId: message.server.id, setting: 'commandChannels', values: { $all: [message.channel.id] } }
+          const cmdChannelQuery = { guildId: message.guild.id, setting: 'commandChannels', values: { $all: [message.channel.id] } }
 
-          api.db.collection('servers').findOne(cmdChannelQuery, (err, doc) => {
+          api.db.collection('guilds').findOne(cmdChannelQuery, (err, doc) => {
 
             if (err) {
               console.log('setLobby DB ERROR 1', err)
@@ -113,39 +116,39 @@ const commands = (api) => ({
             }
 
             if (doc == null) {
-              bot.sendMessage(message, 'This text channel is not a registered command channel')
+              message.channel.send('This text channel is not a registered command channel')
               return
             }
 
             if (args.length === 0) {
-              bot.sendMessage(message, 'You must specify the name of the team you want to set the voice channel for. Possible values: ' + TEAM_NAMES_LIST)
+              message.channel.send('You must specify the name of the team you want to set the voice channel for. Possible values: ' + TEAM_NAMES_LIST)
               return
             }
 
             const team = args[0]
             if (TEAM_NAMES[team] == null) {
-              bot.sendMessage(message, 'The specified team name is invalid. Possible values: ' + TEAM_NAMES_LIST)
+              message.channel.send('The specified team name is invalid. Possible values: ' + TEAM_NAMES_LIST)
               return
             }
 
             if (voiceChannel == null) {
-              bot.sendMessage(message, 'You must be connected to a voice channel to set the voice channel for ' + TEAM_NAMES[team])
+              message.channel.send('You must be connected to a voice channel to set the voice channel for ' + TEAM_NAMES[team])
               return
             }
 
 
-            const voiceChannelQuery = { serverId: message.server.id, cmdChannelId: message.channel.id, setting: 'voiceChannel', teamName: team }
+            const voiceChannelQuery = { guildId: message.guild.id, cmdChannelId: message.channel.id, setting: 'voiceChannel', teamName: team }
 
-            api.db.collection('servers').update(voiceChannelQuery, { $set: { value: voiceChannel.id } }, { upsert: true }, (err, numAffected) => {
+            api.db.collection('guilds').update(voiceChannelQuery, { $set: { value: voiceChannel.id } }, { upsert: true }, (err, numAffected) => {
               if (err) {
                 console.log('setVoice DB ERROR 2', err)
 
-                bot.sendMessage(message, 'An error occured while trying to set the lobby voice channel')
+                message.channel.send('An error occured while trying to set the lobby voice channel')
 
                 return
               }
 
-              bot.sendMessage(message, 'Team voice channel successfully set for ' + TEAM_NAMES[team], undefined, (err) => {
+              message.channel.send('Team voice channel successfully set for ' + TEAM_NAMES[team], undefined, (err) => {
                 if (err) {
                   console.log('setVoice FAILED TO SEND SUCCESS MESSAGE')
                   return
@@ -155,7 +158,7 @@ const commands = (api) => ({
 
           })
         } else {
-          bot.reply(message, 'You don\'t have permission to set the lobby channel')
+          message.channel.send('You don\'t have permission to set the lobby channel')
         }
       })
   }

@@ -5,16 +5,16 @@
   "main": "lib/index.js",
   "dependencies": {
     "babel-polyfill": "^6.26.0",
-    "bulk-require": "^0.2.1",
-    "discord.js": "^8.2.0",
+    "bulk-require": "^1.0.1",
+    "discord.js": "^11.2.1",
     "dotenv": "^4.0.0",
-    "load-json-file": "^1.1.0",
+    "load-json-file": "^3.0.0",
     "minimist": "^1.2.0",
     "moment": "^2.19.1",
     "moment-duration-format": "^1.3.0",
     "mongodb": "^2.2.33",
     "node-ffprobe": "^1.2.2",
-    "superagent": "^1.8.5"
+    "superagent": "^3.6.3"
   },
   "devDependencies": {
     "babel-cli": "^6.5.1",

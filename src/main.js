@@ -19,8 +19,8 @@ assert.ok(MONGODB_CONNECTION, 'MONGODB_CONNECTION env variable must be set')
 MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
   assert.equal(null, err)
 
-  db.collection('permissions').createIndex({ serverId: 1, userId: 1, node: 1 }, { unique: true })
-  db.collection('servers').createIndex({ serverId: 1 })
+  db.collection('permissions').createIndex({ guildId: 1, userId: 1, node: 1 }, { unique: true })
+  db.collection('guilds').createIndex({ guildId: 1 })
 
   const bot = new Discord.Client({
     forceFetchUsers: true
@@ -47,6 +47,9 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
     bot,
     permissions,
     options,
+    getCommands() {
+      return registeredCommands
+    },
     registerCommand(command, helpText, fn) {
       registeredCommands[command] = registeredCommands[command] || []
       registeredCommands[command].push({
@@ -69,7 +72,7 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
       console.log(message.author.id)
 
       if (!command || !command.length) {
-        bot.reply(message, `Unknown command: \`${utils.sanitizeCode(cmd)}\``)
+        message.channel.send(`Unknown command: \`${utils.sanitizeCode(cmd)}\``)
         return
       }
 
@@ -80,5 +83,5 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
     }
   })
 
-  bot.loginWithToken(DISCORD_TOKEN)
+  bot.login(DISCORD_TOKEN)
 })
