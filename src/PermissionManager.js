@@ -1,7 +1,10 @@
 const PERM_OWNERSHIP = '$ownership'
 
 export default function(db, bot) {
-  const permissions = []
+  const permissions = [{
+    node: PERM_OWNERSHIP,
+    helpText: 'Special permission that bypasses all permission checks'
+  }]
   const permissionsDb = db.collection('permissions')
 
   const permissionsApi = {}
@@ -53,6 +56,10 @@ export default function(db, bot) {
     }
 
     const promise = new Promise((resolve, reject) => {
+      if (user.id === guild.owner.id) {
+        resolve(true)
+        return
+      }
       permissionsDb.findOne({ guildId: guild.id, userId: user.id, node: { $in: [node, PERM_OWNERSHIP] } }, (err, doc) => {
         if (err) {
           console.log('checkPermission DB ERROR', err)
