@@ -216,6 +216,9 @@ export default function load(api) {
 
   register('setchannel', 'Sets the channel to use to control and administrate the 6v6 lobby', cmds.setChannel)
   register('setlobby', 'Sets the current voice channel as the lobby for regrouping players before and after games', cmds.setLobby)
-  register('setvoice', 'Sets the current voice channel as the voice channel for a specified team', cmds.setVoice)
+  register('setvoice', {
+    desc: 'Sets the current voice channel as the voice channel for a specified team',
+    extra: 'Syntax: setvoice <team1|team2>'
+  }, cmds.setVoice)
   register('deletechannel', 'Unregisters the channel as a 6v6 lobby command channel', cmds.deleteChannel)
 }

@@ -24,7 +24,7 @@ export default function load({registerCommand: register, getCommands}) {
     const lastCommand = Math.min(page * COMMANDS_PER_PAGE, commandNames.length)
     for (let i = (page - 1) * COMMANDS_PER_PAGE; i < lastCommand; i++) {
       const cmd = commandNames[i]
-      embed.addField('!' + cmd, commands[cmd].helpText, false)
+      embed.addField('!' + cmd, commands[cmd].helpInfo.desc, false)
     }
 
     message.channel.send({embed})

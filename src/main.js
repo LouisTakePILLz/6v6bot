@@ -50,8 +50,11 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
     getCommands() {
       return registeredCommands
     },
-    registerCommand(command, helpText, fn) {
-      registeredCommands[command] = { fn, helpText }
+    registerCommand(command, helpInfo, fn) {
+      registeredCommands[command] = {
+        fn,
+        helpInfo: typeof(helpInfo) === 'string' ? {desc: helpInfo} : helpInfo
+      }
     },
     registerRaw(fn) {
       registeredListeners.push(fn)
