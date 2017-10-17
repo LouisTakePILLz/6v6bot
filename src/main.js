@@ -2,7 +2,6 @@ import path from 'path'
 import fs from 'fs'
 import assert from 'assert'
 import { MongoClient } from 'mongodb'
-import Datastore from 'nedb'
 import Discord from 'discord.js'
 import request from 'superagent'
 import plugins from '~/plugins'
@@ -83,13 +82,3 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
 
   bot.loginWithToken(DISCORD_TOKEN)
 })
-
-/*const db = {
-  permissions: new Datastore({ filename: 'db/permissions.db', autoload: true }),
-  servers: new Datastore({ filename: 'db/servers.db', autoload: true })
-}
-
-db.permissions.ensureIndex({ fieldName: 'serverId' })
-db.permissions.ensureIndex({ fieldName: 'userId', unique: true })
-
-db.servers.ensureIndex({ fieldName: 'serverId' })*/
