@@ -16,7 +16,7 @@ export default function load({registerCommand: register, getCommands}) {
       return
     }
 
-    const maxPage = Math.max(commandNames.length / COMMANDS_PER_PAGE, 1)
+    const maxPage = Math.ceil(Math.max(commandNames.length / COMMANDS_PER_PAGE, 1))
     const page = Math.max(Math.min(Number(args[0]) || 1, maxPage), 1)
 
     embed.setFooter('page ' + page + ' of ' + maxPage, 'https://cdn.discordapp.com/embed/avatars/0.png')

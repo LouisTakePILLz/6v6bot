@@ -220,5 +220,5 @@ export default function load(api) {
     desc: 'Sets the current voice channel as the voice channel for a specified team',
     extra: 'Syntax: setvoice <team1|team2>'
   }, cmds.setVoice)
-  register('deletechannel', 'Unregisters the channel as a 6v6 lobby command channel', cmds.deleteChannel)
+  register('deletechannel', 'Unregisters the channel as a 6v6 command channel', cmds.deleteChannel)
 }
