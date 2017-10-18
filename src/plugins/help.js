@@ -18,7 +18,12 @@ export default function load({registerCommand: register, getCommands}) {
     }
 
     if (!utils.isNullOrWhitespace(args[0]) && Number.isNaN(Number(args[0]))) {
-      const commandName = args[0]
+      // normalize the command name and get rid of the exclamation point
+      let commandName = args[0].toLowerCase().trim()
+      if (commandName.indexOf('!') === 0) {
+        commandName = commandName.substring(1)
+      }
+
       const command = commands.get(commandName)
 
       if (command == null) {
