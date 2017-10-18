@@ -85,7 +85,7 @@ function grantUserPermission(env, message, memberId, permission) {
             message.channel.send('An error occured while trying to grant user permission (unknown result)')
           }
 
-        }, () => {
+        }, (err) => {
           console.log('GRANT PERMISSION ERROR', err)
           message.channel.send('An error occured while trying to grant user permission')
         })
@@ -159,7 +159,7 @@ function grantRolePermission(env, message, roleId, permission) {
             message.channel.send('An error occured while trying to grant role permission (unknown result)')
           }
 
-        }, () => {
+        }, (err) => {
           console.log('GRANT PERMISSION ERROR', err)
           message.channel.send('An error occured while trying to grant role permission')
         })
