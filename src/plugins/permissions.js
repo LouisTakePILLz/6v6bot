@@ -15,7 +15,7 @@ function showUserList(bot, message, arg) {
 
   const { members, memberCount } = message.guild
 
-  // Not using Object.keys as 'members' is a specialized: Collection<K, V>
+  // Not using Object.keys as 'members' is a specialized collection: Collection<K, V>
   const flakes = members.keyArray()
 
   const embed = new RichEmbed()
@@ -40,7 +40,7 @@ function showUserList(bot, message, arg) {
 function showRoleList(bot, message, arg) {
   const { roles } = message.guild
 
-  // Not using Object.keys as 'members' is a specialized: Collection<K, V>
+  // Not using Object.keys as 'members' is a specialized collection: Collection<K, V>
   const flakes = roles.keyArray()
 
   const embed = new RichEmbed()
@@ -62,7 +62,156 @@ function showRoleList(bot, message, arg) {
   message.channel.send({embed})
 }
 
-export default function load({registerCommand: register, permissions}) {
+function grantUserPermission(env, message, memberId, permission) {
+  const { bot, permNodes, api: { permissions } } = env
+  const { members } = message.guild
+
+  // Check if the member ID is valid
+  const memberTarget = members.get(memberId)
+  if (memberTarget != null) {
+
+    // Check if the permission node actually exists
+    if (permNodes.has(permission)) {
+
+      permissions.grantUserPermission(message.guild, memberTarget, permission)
+        .then(({result}) => {
+
+          if (result.nModified === 1 && result.ok === 1) {
+            message.channel.send(`User \`${utils.sanitizeCode(memberTarget.displayName)}\` has already been granted the \`${utils.sanitizeCode(permission)}\` permission`)
+          } else if (result.nModified === 0 && result.ok === 1) {
+            message.channel.send(`Granted permission \`${utils.sanitizeCode(permission)}\` for user \`${utils.sanitizeCode(memberTarget.displayName)}\``)
+          } else {
+            console.log('GRANT PERMISSION RESULT ERROR', result)
+            message.channel.send('An error occured while trying to grant user permission (unknown result)')
+          }
+
+        }, () => {
+          console.log('GRANT PERMISSION ERROR', err)
+          message.channel.send('An error occured while trying to grant user permission')
+        })
+
+    } else {
+      message.channel.send(MSG_INVALID_PERMISSION)
+    }
+
+  } else {
+    message.channel.send(MSG_INVALID_TARGET_NAME)
+  }
+}
+
+function revokeUserPermission(env, message, memberId, permission) {
+  const { bot, permNodes, api: { permissions } } = env
+  const { members } = message.guild
+
+  // Check if the member ID is valid
+  const memberTarget = members.get(memberId)
+  if (memberTarget != null) {
+
+    // Check if the permission node actually exists
+    if (permNodes.has(permission)) {
+
+      permissions.revokeUserPermission(message.guild, memberTarget, permission)
+        .then(({result}) => {
+
+          if (result.n === 0 && result.ok === 1) {
+            message.channel.send(`User \`${utils.sanitizeCode(memberTarget.displayName)}\` doesn't have the \`${utils.sanitizeCode(permission)}\` permission`)
+          } else if (result.n > 0 && result.ok === 1) {
+            message.channel.send(`Revoked permission \`${utils.sanitizeCode(permission)}\` for user \`${utils.sanitizeCode(memberTarget.displayName)}\``)
+          } else {
+          console.log('REVOKE PERMISSION RESULT ERROR', result)
+            message.channel.send('An error occured while trying to revoke user permission (unknown result)')
+          }
+
+        }, (err) => {
+          console.log('REVOKE PERMISSION ERROR', err)
+          message.channel.send('An error occured while trying to revoke user permission')
+        })
+
+    } else {
+      message.channel.send(MSG_INVALID_PERMISSION)
+    }
+
+  } else {
+    message.channel.send(MSG_INVALID_TARGET_NAME)
+  }
+}
+
+function grantRolePermission(env, message, roleId, permission) {
+  const { bot, permNodes, api: { permissions } } = env
+  const { roles } = message.guild
+
+  // Check if the role ID is valid
+  const roleTarget = roles.get(roleId)
+  if (roleTarget != null) {
+
+    // Check if the permission node actually exists
+    if (permNodes.has(permission)) {
+
+      permissions.grantRolePermission(message.guild, roleTarget, permission)
+        .then(({result}) => {
+
+          if (result.nModified === 1 && result.ok === 1) {
+            message.channel.send(`Role \`${utils.sanitizeCode(roleTarget.name)}\` has already been granted the \`${utils.sanitizeCode(permission)}\` permission`)
+          } else if (result.nModified === 0 && result.ok === 1) {
+            message.channel.send(`Granted permission \`${utils.sanitizeCode(permission)}\` for role \`${utils.sanitizeCode(roleTarget.name)}\``)
+          } else {
+            console.log('GRANT PERMISSION RESULT ERROR', result)
+            message.channel.send('An error occured while trying to grant role permission (unknown result)')
+          }
+
+        }, () => {
+          console.log('GRANT PERMISSION ERROR', err)
+          message.channel.send('An error occured while trying to grant role permission')
+        })
+
+    } else {
+      message.channel.send(MSG_INVALID_PERMISSION)
+    }
+
+  } else {
+    message.channel.send(MSG_INVALID_TARGET_NAME)
+  }
+}
+
+function revokeRolePermission(env, message, roleId, permission) {
+  const { bot, permNodes, api: { permissions } } = env
+  const { roles } = message.guild
+
+  // Check if the rold ID is valid
+  const roleTarget = roles.get(roleId)
+  if (roleTarget != null) {
+
+    // Check if the permission node actually exists
+    if (permNodes.has(permission)) {
+
+      permissions.revokeRolePermission(message.guild, roleTarget, permission)
+        .then(({result}) => {
+
+          if (result.n === 0 && result.ok === 1) {
+            message.channel.send(`Role \`${utils.sanitizeCode(roleTarget.name)}\` doesn't have the \`${utils.sanitizeCode(permission)}\` permission`)
+          } else if (result.n > 0 && result.ok === 1) {
+            message.channel.send(`Revoked permission \`${utils.sanitizeCode(permission)}\` for role \`${utils.sanitizeCode(roleTarget.name)}\``)
+          } else {
+            console.log('REVOKE PERMISSION RESULT ERROR', result)
+            message.channel.send('An error occured while trying to revoke role permission (unknown result)')
+          }
+
+        }, (err) => {
+          console.log('REVOKE PERMISSION ERROR', err)
+          message.channel.send('An error occured while trying to revoke role permission')
+        })
+
+    } else {
+      message.channel.send(MSG_INVALID_PERMISSION)
+    }
+
+  } else {
+    message.channel.send(MSG_INVALID_TARGET_NAME)
+  }
+}
+
+export default function load(api) {
+  const { registerCommand: register, permissions } = api
   permissions.registerPermission(PERM_PERMISSIONS, 'Allows managing permissions using the !perm command')
 
   register('perm', {
@@ -86,6 +235,8 @@ export default function load({registerCommand: register, permissions}) {
               return
             }
 
+            const env = { bot, permNodes, api }
+
             if (action === 'list') {
 
               const permNodeKeys = [...permNodes.keys()]
@@ -108,110 +259,44 @@ export default function load({registerCommand: register, permissions}) {
 
               message.channel.send({embed})
 
-            } else if (action === 'grant' || action == 'revoke') {
+            } else if (action === 'grant') {
 
-              const target = args[1]
-              const target2 = args[2]
+              if (args[1] === 'user') {
 
-              if (target === 'user') {
-
-                if (target2 === 'list') {
+                if (args[2] === 'list') {
                   showUserList(bot, message, args, args[3])
                 } else {
-                  const permission = args[3]
-
-                  const { members } = message.guild
-
-                  // Check if the member ID is valid
-                  const memberTarget = members.get(target2)
-                  if (memberTarget != null) {
-
-                    // Check if the permission node actually exists
-                    if (permNodes.has(permission)) {
-                      if (action === 'grant') {
-
-                        permissions.grantPermission(message.guild, memberTarget, permission)
-                          .then(({result}) => {
-
-                            if (result.nModified === 1 && result.ok === 1) {
-                              message.channel.send(`User \`${utils.sanitizeCode(memberTarget.displayName)}\` has already been granted the \`${utils.sanitizeCode(permission)}\` permission`)
-                            } else if (result.nModified === 0 && result.ok === 1) {
-                              message.channel.send(`Granted permission \`${utils.sanitizeCode(permission)}\` for user \`${utils.sanitizeCode(memberTarget.displayName)}\``)
-                            } else {
-                              console.log('GRANT PERMISSION RESULT ERROR', result)
-                              message.channel.send('An error occured while trying to grant user permission (unknown result)')
-                            }
-
-                          }, () => {
-                            console.log('GRANT PERMISSION ERROR', err)
-                            message.channel.send('An error occured while trying to grant user permission')
-                          })
-
-                      } else { // action === 'Revoke'
-
-                        permissions.revokePermission(message.guild, memberTarget, permission)
-                          .then(({result}) => {
-
-                            if (result.n === 0 && result.ok === 1) {
-                              message.channel.send(`User \`${utils.sanitizeCode(memberTarget.displayName)}\` doesn't have the \`${utils.sanitizeCode(permission)}\` permission`)
-                            } else if (result.n > 0 && result.ok === 1) {
-                              message.channel.send(`Revoked permission \`${utils.sanitizeCode(permission)}\` for user \`${utils.sanitizeCode(memberTarget.displayName)}\``)
-                            } else {
-                            console.log('REVOKE PERMISSION RESULT ERROR', result)
-                              message.channel.send('An error occured while trying to revoke user permission (unknown result)')
-                            }
-
-                          }, (err) => {
-                            console.log('REVOKE PERMISSION ERROR', err)
-                            message.channel.send('An error occured while trying to revoke user permission')
-                          })
-
-                      }
-                    } else {
-                      message.channel.send(MSG_INVALID_PERMISSION)
-                    }
-
-                  } else {
-                    message.channel.send(MSG_INVALID_TARGET_NAME)
-                  }
+                  grantUserPermission(env, message, args[2], args[3])
                 }
 
-              } else if (target === 'role') {
+              } else if (args[1] == 'role') {
 
-                if (target2 === 'list') {
+                if (args[2] === 'list') {
                   showRoleList(bot, message, args, args[3])
                 } else {
-                  const permission = args[3]
+                  grantRolePermission(env, message, args[2], args[3])
+                }
 
-                  const { members } = message.guild
+              } else {
+                message.channel.send(MSG_INVALID_TARGET_NAME)
+              }
 
-                  // Check if the member ID is valid
-                  const memberTarget = members.get(target2)
-                  if (memberTarget != null) {
+            } else if (action === 'revoke') {
 
-                    // Check if the permission node actually exists
-                    if (permNodes.has(permission)) {
-                      permissions.grantPermission(message.guild, memberTarget, permission)
-                        .then(({result}) => {
+              if (args[1] === 'user') {
 
-                          if (result.nModified === 1 && result.ok === 1) {
-                            message.channel.send(`User \`${utils.sanitizeCode(memberTarget.displayName)}\` has already been granted the \`${utils.sanitizeCode(permission)}\` permission`)
-                          } else if (result.nModified === 0 && result.ok === 1) {
-                            message.channel.send(`Granted permission \`${utils.sanitizeCode(permission)}\` for user \`${utils.sanitizeCode(memberTarget.displayName)}\``)
-                          } else {
-                            message.channel.send('An error occured while trying to grant user permission (unknown result)')
-                          }
+                if (args[2] === 'list') {
+                  showUserList(bot, message, args, args[3])
+                } else {
+                  revokeUserPermission(env, message, args[2], args[3])
+                }
 
-                        }, () => {
-                          message.channel.send('An error occured while trying to grant user permission')
-                        })
-                    } else {
-                      message.channel.send(MSG_INVALID_PERMISSION)
-                    }
+              } else if (args[1] == 'role') {
 
-                  } else {
-                    message.channel.send(MSG_INVALID_TARGET_NAME)
-                  }
+                if (args[2] === 'list') {
+                  showRoleList(bot, message, args, args[3])
+                } else {
+                  revokeRolePermission(env, message, args[2], args[3])
                 }
 
               } else {

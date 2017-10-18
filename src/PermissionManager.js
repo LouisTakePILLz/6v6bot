@@ -80,42 +80,43 @@ export default function(db, bot) {
     return extendPermissionPromise(guild, user, promise)
   }
 
-  permissionsApi.grantPermission = (...args) => {
-    let guild = args[0]
-    let user = args[1]
-    let node = args[2]
-
-    if (args.length < 3) {
-      guild = args[0].guild
-      user = args[0].author
-      node = args[1]
-    }
-
+  permissionsApi.grantUserPermission = (guild, user, node) => {
     return new Promise((resolve, reject) => {
       const permissionQuery = { guildId: guild.id, userId: user.id, node }
       permissionsDb.update(permissionQuery, permissionQuery, { upsert: true })
         .then((e) => resolve(e), /* onError */ (err) => {
-          console.log('grantPermission DB ERROR', err)
+          console.log('grantUserPermission DB ERROR', err)
           reject()
         })
     })
   }
 
-  permissionsApi.revokePermission = (...args) => {
-    let guild = args[0]
-    let user = args[1]
-    let node = args[2]
-
-    if (args.length < 3) {
-      guild = args[0].guild
-      user = args[0].author
-      node = args[1]
-    }
-
+  permissionsApi.revokeUserPermission = (guild, user, node) => {
     return new Promise((resolve, reject) => {
       permissionsDb.remove({ guildId: guild.id, userId: user.id, node })
         .then((e) => resolve(e), /* onError*/ (err) => {
-          console.log('revokePermission DB ERROR', err)
+          console.log('revokeUserPermission DB ERROR', err)
+          reject()
+        })
+    })
+  }
+
+  permissionsApi.grantRolePermission = (guild, role, node) => {
+    return new Promise((resolve, reject) => {
+      const permissionQuery = { guildId: guild.id, roleId: role.id, node }
+      permissionsDb.update(permissionQuery, permissionQuery, { upsert: true })
+        .then((e) => resolve(e), /* onError */ (err) => {
+          console.log('grantRolePermission DB ERROR', err)
+          reject()
+        })
+    })
+  }
+
+  permissionsApi.revokeRolePermission = (guild, role, node) => {
+    return new Promise((resolve, reject) => {
+      permissionsDb.remove({ guildId: guild.id, roleId: role.id, node })
+        .then((e) => resolve(e), /* onError*/ (err) => {
+          console.log('revokeRolePermission DB ERROR', err)
           reject()
         })
     })

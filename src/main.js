@@ -19,7 +19,8 @@ assert.ok(MONGODB_CONNECTION, 'MONGODB_CONNECTION env variable must be set')
 MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
   assert.equal(null, err)
 
-  db.collection('permissions').createIndex({ guildId: 1, userId: 1, node: 1 }, { unique: true })
+  db.collection('permissions').createIndex({ guildId: 1, userId: 1, node: 1 }, { unique: true, sparse: true })
+  db.collection('permissions').createIndex({ guildId: 1, roleId: 1, node: 1 }, { unique: true, sparse: true })
   db.collection('guilds').createIndex({ guildId: 1 })
 
   const bot = new Discord.Client({
