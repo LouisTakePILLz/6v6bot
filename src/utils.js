@@ -6,6 +6,10 @@ export function sanitizeCode(input) {
   return input.replace(/`/g, '\'')
 }
 
+export function isNullOrWhitespace(input) {
+  return !input || !input.trim()
+}
+
 export function isPositiveInteger(input) {
   return /^\+?(0|[1-9]\d*)$/.test(input)
 }

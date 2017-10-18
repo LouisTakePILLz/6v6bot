@@ -62,18 +62,17 @@ const commands = (api) => ({
                 const query = { guildId: message.guild.id, cmdChannelId: message.channel.id, setting: 'voiceChannel' }
                 return api.db.collection('guilds').deleteMany(query)
               }
-            })
-            .catch((err) => {
+            }, /* onError*/ (err) => {
               console.log('deleteChannel DB ERROR 1', err)
               message.channel.send('An error occured while trying to delete the command channel')
             })
             .then((e) => {
               if (!e) {
+                // Returning since the text channel couldn't be deleted
                 return
               }
               message.channel.send('Command channel successfully deleted')
-            })
-            .catch((err) => {
+            }, /* onError*/ (err) => {
               console.log('deleteChannel DB ERROR 2', err)
               message.channel.send('An error occured while trying to delete the associated voice channels')
             })

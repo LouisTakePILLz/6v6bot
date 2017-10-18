@@ -1,10 +1,13 @@
 const PERM_OWNERSHIP = '$ownership'
 
 export default function(db, bot) {
-  const permissions = [{
+  const permissions = new Map()
+
+  permissions.set(PERM_OWNERSHIP, {
     node: PERM_OWNERSHIP,
     helpText: 'Special permission that bypasses all permission checks'
-  }]
+  })
+
   const permissionsDb = db.collection('permissions')
 
   const permissionsApi = {}
@@ -89,17 +92,12 @@ export default function(db, bot) {
     }
 
     return new Promise((resolve, reject) => {
-      permissionsDb.insert({ guildId: guild.id, userId: user.id, node }, (err) => {
-        if (err) {
+      const permissionQuery = { guildId: guild.id, userId: user.id, node }
+      permissionsDb.update(permissionQuery, permissionQuery, { upsert: true })
+        .then((e) => resolve(e), /* onError */ (err) => {
           console.log('grantPermission DB ERROR', err)
-
           reject()
-
-          return
-        }
-
-        resolve()
-      })
+        })
     })
   }
 
@@ -115,22 +113,16 @@ export default function(db, bot) {
     }
 
     return new Promise((resolve, reject) => {
-      permissionsDb.remove({ guildId: guildId, userId: user.id, node }, { multi: true }, (err, numberRemoved) => {
-        if (err) {
+      permissionsDb.remove({ guildId: guild.id, userId: user.id, node })
+        .then((e) => resolve(e), /* onError*/ (err) => {
           console.log('revokePermission DB ERROR', err)
-
           reject()
-
-          return
-        }
-
-        resolve(numberRemoved > 0)
-      })
+        })
     })
   }
 
   permissionsApi.registerPermission = (node, helpText) => {
-    permissions.push({node, helpText})
+    permissions.set(node, {node, helpText})
     return Promise.resolve(true)
   }
 
