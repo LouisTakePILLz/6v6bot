@@ -118,7 +118,7 @@ function revokeUserPermission(env, message, memberId, permission) {
           } else if (result.n > 0 && result.ok === 1) {
             message.channel.send(`Revoked permission \`${utils.sanitizeCode(permission)}\` for user \`${utils.sanitizeCode(memberTarget.displayName)}\``)
           } else {
-          console.log('REVOKE PERMISSION RESULT ERROR', result)
+            console.log('REVOKE PERMISSION RESULT ERROR', result)
             message.channel.send('An error occured while trying to revoke user permission (unknown result)')
           }
 
@@ -177,7 +177,7 @@ function revokeRolePermission(env, message, roleId, permission) {
   const { bot, permNodes, api: { permissions } } = env
   const { roles } = message.guild
 
-  // Check if the rold ID is valid
+  // Check if the role ID is valid
   const roleTarget = roles.get(roleId)
   if (roleTarget != null) {
 
@@ -198,13 +198,68 @@ function revokeRolePermission(env, message, roleId, permission) {
 
         }, (err) => {
           console.log('REVOKE PERMISSION ERROR', err)
-          message.channel.send('An error occured while trying to revoke role permission')
+          message.channel.send('An error occured while trying to clear role permissions')
         })
 
     } else {
       message.channel.send(MSG_INVALID_PERMISSION)
     }
 
+  } else {
+    message.channel.send(MSG_INVALID_TARGET_NAME)
+  }
+}
+
+function clearUserPermissions(env, message, memberId) {
+  const { bot, permNodes, api: { permissions } } = env
+  const { guild } = message
+  const { members } = guild
+
+  // Check if the member ID is valid
+  const memberTarget = members.get(memberId)
+  if (memberTarget != null) {
+
+    env.api.db.collection('user_permissions').deleteMany({ guildId: guild.id, userId: memberId, node: { $exists: true } })
+      .then(({result}) => {
+
+        if (result.ok === 1) {
+          message.channel.send(`Revoked all permissions for user \`${utils.sanitizeCode(memberTarget.displayName)}\``)
+        } else {
+          console.log('CLEAR USER PERMISSIONS RESULT ERROR', result)
+          message.channel.send('An error occured while trying to clear user permissions (unknown result)')
+        }
+
+      }, (err) => {
+        console.log('clearUserPermissions ERROR', err)
+        message.channel.send('An error occured while trying to clear user permissions')
+      })
+
+  } else {
+    message.channel.send(MSG_INVALID_TARGET_NAME)
+  }
+}
+
+function clearRolePermissions(env, message, roleId) {
+  const { bot, permNodes, api: { permissions } } = env
+  const { guild } = message
+  const { roles } = guild
+
+  // Check if the role ID is valid
+  const roleTarget = roles.get(roleId)
+  if (roleTarget != null) {
+    env.api.db.collection('role_permissions').deleteMany({ guildId: guild.id, roleId, node: { $exists: true } })
+      .then(({result}) => {
+
+        if (result.ok === 1) {
+          message.channel.send(`Revoked all permissions for role \`${utils.sanitizeCode(roleTarget.name)}\``)
+        } else {
+          console.log('CLEAR ROLE PERMISSIONS RESULT ERROR', result)
+          message.channel.send('An error occured while trying to clear role permissions (unknown result)')
+        }
+
+      }, /* onError*/ (err) => {
+        console.log('clearRolePermissions DB ERROR', err)
+      })
   } else {
     message.channel.send(MSG_INVALID_TARGET_NAME)
   }
@@ -218,10 +273,10 @@ export default function load(api) {
     desc: 'Manages permisions',
     extra: `Syntax: **perm** <action>
 **perm list** [<page>]
-**perm grant|revoke role|user** <permission_node>|(list [<page>])
-**perm clear role|user** <id>|all
+**perm grant|revoke role|user** <permission_node>|list [<page>]
+**perm clear role|user** <flake_id>
 **perm show** <permission_node>
-**perm show user|role** <id> [<page>]
+**perm show user|role** <flake_id> [<page>]
 `
   }, (bot, message, args) => {
     permissions.checkPermission(message, PERM_PERMISSIONS)
@@ -304,6 +359,15 @@ export default function load(api) {
               }
 
             } else if (action === 'clear') {
+
+              if (args[1] === 'user') {
+                clearUserPermissions(env, message, args[2])
+              } else if (args[1] === 'role') {
+                clearRolePermissions(env, message, args[2])
+              } else {
+                message.channel.send(MSG_INVALID_TARGET_NAME)
+              }
+
             } else {
               message.channel.send('Invalid action name, check `!help perm` for the usage information')
             }
