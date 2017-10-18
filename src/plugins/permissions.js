@@ -2,6 +2,8 @@ import { RichEmbed } from 'discord.js'
 import * as utils from '~/utils'
 
 const PERM_PERMISSIONS = 'permissions'
+const PERM_LIST_ROLES = 'list_roles'
+const PERM_LIST_USERS = 'list_users'
 
 const PERMS_PER_PAGE = 5
 const USERS_PER_PAGE = 9
@@ -31,7 +33,7 @@ function showUserList(bot, message, arg) {
   const lastMember = Math.min(page * USERS_PER_PAGE, flakes.length)
   for (let i = (page - 1) * USERS_PER_PAGE; i < lastMember; i++) {
     const member = members.get(flakes[i])
-    embed.addField('`' + member.id + '`', utils.sanitizeCode(member.displayName), true)
+    embed.addField('`' + utils.sanitizeCode(member.displayName) + '`', '`' + member.id + '`',  true)
   }
 
   message.channel.send({embed})
@@ -56,7 +58,7 @@ function showRoleList(bot, message, arg) {
   const lastRole = Math.min(page * ROLES_PER_PAGE, flakes.length)
   for (let i = (page - 1) * ROLES_PER_PAGE; i < lastRole; i++) {
     const role = roles.get(flakes[i])
-    embed.addField('`' + role.id + '`', '`' + utils.sanitizeCode(role.name) + '`', true)
+    embed.addField('`' + utils.sanitizeCode(role.name) + '`', '`' + role.id + '`', true)
   }
 
   message.channel.send({embed})
@@ -247,6 +249,7 @@ function clearRolePermissions(env, message, roleId) {
   // Check if the role ID is valid
   const roleTarget = roles.get(roleId)
   if (roleTarget != null) {
+
     env.api.db.collection('role_permissions').deleteMany({ guildId: guild.id, roleId, node: { $exists: true } })
       .then(({result}) => {
 
@@ -260,6 +263,7 @@ function clearRolePermissions(env, message, roleId) {
       }, /* onError*/ (err) => {
         console.log('clearRolePermissions DB ERROR', err)
       })
+
   } else {
     message.channel.send(MSG_INVALID_TARGET_NAME)
   }
@@ -267,17 +271,45 @@ function clearRolePermissions(env, message, roleId) {
 
 export default function load(api) {
   const { registerCommand: register, permissions } = api
-  permissions.registerPermission(PERM_PERMISSIONS, 'Allows managing permissions using the !perm command')
+
+  permissions.registerPermission(PERM_PERMISSIONS, 'Allows managing permissions using the !perm command (also allows using !roles and !users)')
+  permissions.registerPermission(PERM_LIST_ROLES, 'Allows listing roles using the !roles command')
+  permissions.registerPermission(PERM_LIST_USERS, 'Allows listing users using the !users command')
+
+  register('roles', {
+    desc: 'Lists roles and their snowflake identifiers (`flake_id`), useful for configuring permissions'
+  }, (bot, message, args) => {
+    permissions.checkPermission(message, PERM_PERMISSIONS).or(PERM_LIST_ROLES)
+      .then((granted) => {
+        if (granted) {
+          showRoleList(bot, message, args[0])
+        } else {
+          message.channel.send('You don\'t have permission to list roles')
+        }
+      })
+  })
+
+  register('users', {
+    desc: 'Lists users and their snowflake identifiers (`flake_id`), useful for configuring permissions'
+  }, (bot, message, args) => {
+    permissions.checkPermission(message, PERM_PERMISSIONS).or(PERM_LIST_USERS)
+      .then((granted) => {
+        if (granted) {
+          showUserList(bot, message, args[0])
+        } else {
+          message.channel.send('You don\'t have permission to list users')
+        }
+      })
+  })
 
   register('perm', {
     desc: 'Manages permisions',
     extra: `Syntax: **perm** <action>
 **perm list** [<page>]
-**perm grant|revoke role|user** <permission_node>|list [<page>]
+**perm grant|revoke role|user** <permission_node>
 **perm clear role|user** <flake_id>
 **perm show** <permission_node>
-**perm show user|role** <flake_id> [<page>]
-`
+**perm show user|role** <flake_id> [<page>]`
   }, (bot, message, args) => {
     permissions.checkPermission(message, PERM_PERMISSIONS)
       .then((granted) => {
@@ -317,21 +349,9 @@ export default function load(api) {
             } else if (action === 'grant') {
 
               if (args[1] === 'user') {
-
-                if (args[2] === 'list') {
-                  showUserList(bot, message, args, args[3])
-                } else {
-                  grantUserPermission(env, message, args[2], args[3])
-                }
-
+                grantUserPermission(env, message, args[2], args[3])
               } else if (args[1] == 'role') {
-
-                if (args[2] === 'list') {
-                  showRoleList(bot, message, args, args[3])
-                } else {
-                  grantRolePermission(env, message, args[2], args[3])
-                }
-
+                grantRolePermission(env, message, args[2], args[3])
               } else {
                 message.channel.send(MSG_INVALID_TARGET_NAME)
               }
@@ -339,21 +359,9 @@ export default function load(api) {
             } else if (action === 'revoke') {
 
               if (args[1] === 'user') {
-
-                if (args[2] === 'list') {
-                  showUserList(bot, message, args, args[3])
-                } else {
-                  revokeUserPermission(env, message, args[2], args[3])
-                }
-
+                revokeUserPermission(env, message, args[2], args[3])
               } else if (args[1] == 'role') {
-
-                if (args[2] === 'list') {
-                  showRoleList(bot, message, args, args[3])
-                } else {
-                  revokeRolePermission(env, message, args[2], args[3])
-                }
-
+                revokeRolePermission(env, message, args[2], args[3])
               } else {
                 message.channel.send(MSG_INVALID_TARGET_NAME)
               }
