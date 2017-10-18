@@ -28,7 +28,7 @@ function showUserList(bot, message, arg) {
   const maxPage = Math.ceil(Math.max(flakes.length / USERS_PER_PAGE, 1))
   const page = Math.max(Math.min(Number(arg) || 1, maxPage), 1)
 
-  embed.setFooter('page ' + page + ' of ' + maxPage, 'https://cdn.discordapp.com/embed/avatars/0.png')
+  embed.setFooter('Page ' + page + ' of ' + maxPage, 'https://cdn.discordapp.com/embed/avatars/0.png')
 
   const lastMember = Math.min(page * USERS_PER_PAGE, flakes.length)
   for (let i = (page - 1) * USERS_PER_PAGE; i < lastMember; i++) {
@@ -53,7 +53,7 @@ function showRoleList(bot, message, arg) {
   const maxPage = Math.ceil(Math.max(flakes.length / ROLES_PER_PAGE, 1))
   const page = Math.max(Math.min(Number(arg) || 1, maxPage), 1)
 
-  embed.setFooter('page ' + page + ' of ' + maxPage, 'https://cdn.discordapp.com/embed/avatars/0.png')
+  embed.setFooter('Page ' + page + ' of ' + maxPage, 'https://cdn.discordapp.com/embed/avatars/0.png')
 
   const lastRole = Math.min(page * ROLES_PER_PAGE, flakes.length)
   for (let i = (page - 1) * ROLES_PER_PAGE; i < lastRole; i++) {
@@ -277,7 +277,8 @@ export default function load(api) {
   permissions.registerPermission(PERM_LIST_USERS, 'Allows listing users using the !users command')
 
   register('roles', {
-    desc: 'Lists roles and their snowflake identifiers (`flake_id`), useful for configuring permissions'
+    desc: 'Lists roles and their snowflake identifiers (`flake_id`), useful for configuring permissions',
+    perm: `Requires \`${PERM_LIST_ROLES}\` or \`${PERM_PERMISSIONS}\``
   }, (bot, message, args) => {
     permissions.checkPermission(message, PERM_PERMISSIONS).or(PERM_LIST_ROLES)
       .then((granted) => {
@@ -290,7 +291,8 @@ export default function load(api) {
   })
 
   register('users', {
-    desc: 'Lists users and their snowflake identifiers (`flake_id`), useful for configuring permissions'
+    desc: 'Lists users and their snowflake identifiers (`flake_id`), useful for configuring permissions',
+    perm: `Requires \`${PERM_LIST_USERS}\` or \`${PERM_PERMISSIONS}\``
   }, (bot, message, args) => {
     permissions.checkPermission(message, PERM_PERMISSIONS).or(PERM_LIST_USERS)
       .then((granted) => {
@@ -304,7 +306,8 @@ export default function load(api) {
 
   register('perm', {
     desc: 'Manages permisions',
-    extra: `Syntax: **perm** <action>
+    perm: `Requires \`${PERM_PERMISSIONS}\``,
+    extra: `**perm** <action>
 **perm list** [<page>]
 **perm grant|revoke role|user** <permission_node>
 **perm clear role|user** <flake_id>
@@ -336,7 +339,7 @@ export default function load(api) {
               const maxPage = Math.ceil(Math.max(permNodes.size / PERMS_PER_PAGE, 1))
               const page = Math.max(Math.min(Number(args[1]) || 1, maxPage), 1)
 
-              embed.setFooter('page ' + page + ' of ' + maxPage, 'https://cdn.discordapp.com/embed/avatars/0.png')
+              embed.setFooter('Page ' + page + ' of ' + maxPage, 'https://cdn.discordapp.com/embed/avatars/0.png')
 
               const lastPermNode = Math.min(page * PERMS_PER_PAGE, permNodes.size)
               for (let i = (page - 1) * PERMS_PER_PAGE; i < lastPermNode; i++) {

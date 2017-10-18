@@ -213,11 +213,24 @@ export default function load(api) {
   permissions.registerPermission(PERM_DELETECHANNEL, 'Allows using the !deletechannel command')
   permissions.registerPermission(PERM_CHANNELS, 'Allows using all the commands related to channel configuration')
 
-  register('setchannel', 'Sets the channel to use to control and administrate the 6v6 lobby', cmds.setChannel)
-  register('setlobby', 'Sets the current voice channel as the lobby for regrouping players before and after games', cmds.setLobby)
+  register('setchannel', {
+    desc: 'Sets the channel to use to control and administrate the 6v6 lobby',
+    perm: `Requires \`${PERM_SETCHANNEL}\` or \`${PERM_CHANNELS}\``
+  }, cmds.setChannel)
+
+  register('setlobby', {
+    desc: 'Sets the current voice channel as the lobby for regrouping players before and after games',
+    perm: `Requires \`${PERM_SETCHANNEL}\` or \`${PERM_SETLOBBY}\``
+  }, cmds.setLobby)
+
   register('setvoice', {
     desc: 'Sets the current voice channel as the voice channel for a specified team',
-    extra: 'Syntax: setvoice <team1|team2>'
+    perm: `Requires \`${PERM_SETCHANNEL}\` or \`${PERM_SETVOICE}\``,
+    extra: 'setvoice team1|team2'
   }, cmds.setVoice)
-  register('deletechannel', 'Unregisters the channel as a 6v6 command channel', cmds.deleteChannel)
+
+  register('deletechannel', {
+    desc: 'Unregisters the channel as a 6v6 command channel',
+    perm: `Requires \`${PERM_SETCHANNEL}\` or \`${PERM_DELETECHANNEL}\``
+  }, cmds.deleteChannel)
 }

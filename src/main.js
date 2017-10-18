@@ -39,7 +39,7 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
     } while (match)
   }
 
-  const registeredCommands = {}
+  const registeredCommands = new Map()
   const registeredListeners = []
   const permissions = PermissionManager(db, bot)
 
@@ -52,10 +52,10 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
       return registeredCommands
     },
     registerCommand(command, helpInfo, fn) {
-      registeredCommands[command] = {
+      registeredCommands.set(command, {
         fn,
         helpInfo: typeof(helpInfo) === 'string' ? {desc: helpInfo} : helpInfo
-      }
+      })
     },
     registerRaw(fn) {
       registeredListeners.push(fn)
@@ -68,10 +68,10 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
     if (message.content.indexOf('!') === 0) {
       const args = [...getCommand(message.content.substr(1))]
       const cmd = args.shift().toLowerCase().trim()
-      const command = registeredCommands[cmd]
+      const command = registeredCommands.get(cmd)
       console.log(message.author.id)
 
-      if (!command) {
+      if (command == null) {
         message.channel.send(`Unknown command: \`${utils.sanitizeCode(cmd)}\``)
         return
       }
