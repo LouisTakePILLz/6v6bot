@@ -1,6 +1,5 @@
+import * as constants from '~/constants'
 import * as utils from '~/utils'
-
-const PERM_CHANNELS = 'channels'
 
 const TEAM_NAMES = {
   team1: 'Team 1',
@@ -13,7 +12,7 @@ const commands = (api) => ({
   setChannel(bot, message, args) {
     const { author } = message
 
-    api.permissions.checkPermission(message, PERM_CHANNELS)
+    api.permissions.checkPermission(message, constants.PERM_CHANNELS)
       .then((granted) => {
         if (granted) {
           const query = { guildId: message.guild.id, setting: 'commandChannels' }
@@ -43,7 +42,7 @@ const commands = (api) => ({
   deleteChannel(bot, message, args) {
     const { author } = message
 
-    api.permissions.checkPermission(message, PERM_CHANNELS)
+    api.permissions.checkPermission(message, constants.PERM_CHANNELS)
       .then((granted) => {
         if (granted) {
           const query = { guildId: message.guild.id, setting: 'commandChannels' }
@@ -81,7 +80,7 @@ const commands = (api) => ({
   setLobby(bot, message, args) {
     const { author } = message
 
-    api.permissions.checkPermission(message, PERM_CHANNELS)
+    api.permissions.checkPermission(message, constants.PERM_CHANNELS)
       .then((granted) => {
         if (granted) {
           const voiceChannel = utils.getUserVoiceChannel(bot, message.guild, message.author)
@@ -135,7 +134,7 @@ const commands = (api) => ({
   setVoice(bot, message, args) {
     const { author } = message
 
-    api.permissions.checkPermission(message, PERM_CHANNELS)
+    api.permissions.checkPermission(message, constants.PERM_CHANNELS)
       .then((granted) => {
         if (granted) {
           const voiceChannel = utils.getUserVoiceChannel(bot, message.guild, message.author)
@@ -203,26 +202,26 @@ export default function load(api) {
   const { registerCommand: register, permissions } = api
   const cmds = commands(api)
 
-  permissions.registerPermission(PERM_CHANNELS, 'Allows using all the commands related to channel configuration')
+  permissions.registerPermission(constants.PERM_CHANNELS, 'Allows using all the commands related to channel configuration')
 
   register('setchannel', {
     desc: 'Sets the channel to use to control and administrate the 6v6 lobby',
-    perm: `Requires \`${PERM_CHANNELS}\``
+    perm: `Requires \`${constants.PERM_CHANNELS}\``
   }, cmds.setChannel)
 
   register('setlobby', {
     desc: 'Sets the current voice channel as the lobby for regrouping players before and after games',
-    perm: `Requires \`${PERM_CHANNELS}\``
+    perm: `Requires \`${constants.PERM_CHANNELS}\``
   }, cmds.setLobby)
 
   register('setvoice', {
     desc: 'Sets the current voice channel as the voice channel for a specified team',
-    perm: `Requires \`${PERM_CHANNELS}\``,
+    perm: `Requires \`${constants.PERM_CHANNELS}\``,
     extra: 'setvoice team1|team2'
   }, cmds.setVoice)
 
   register('deletechannel', {
     desc: 'Unregisters the channel as a 6v6 command channel',
-    perm: `Requires \`${PERM_CHANNELS}\``
+    perm: `Requires \`${constants.PERM_CHANNELS}\``
   }, cmds.deleteChannel)
 }

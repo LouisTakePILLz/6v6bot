@@ -1,8 +1,6 @@
 import { RichEmbed } from 'discord.js'
+import * as constants from '~/constants'
 import * as utils from '~/utils'
-
-const PERM_PERMISSIONS = 'permissions'
-const PERM_LISTING = 'listing'
 
 const PERMS_PER_PAGE = 5
 const USERS_PER_PAGE = 9
@@ -365,14 +363,14 @@ function showRolePermissions(env, message, roleId) {
 export default function load(api) {
   const { registerCommand: register, permissions } = api
 
-  permissions.registerPermission(PERM_PERMISSIONS, 'Allows managing permissions using the !perm command (also allows using !roles and !users)')
-  permissions.registerPermission(PERM_LISTING, 'Allows listing users and roles using the !users and !roles commands')
+  permissions.registerPermission(constants.PERM_PERMISSIONS, 'Allows managing permissions using the !perm command (also allows using !roles and !users)')
+  permissions.registerPermission(constants.PERM_LISTING, 'Allows listing users and roles using the !users and !roles commands')
 
   register('roles', {
     desc: 'Lists roles and their snowflake identifiers (`flake_id`), useful for configuring permissions',
-    perm: `Requires \`${PERM_LISTING}\` or \`${PERM_PERMISSIONS}\``
+    perm: `Requires \`${constants.PERM_LISTING}\` or \`${constants.PERM_PERMISSIONS}\``
   }, (bot, message, args) => {
-    permissions.checkPermission(message, PERM_PERMISSIONS).or(PERM_LISTING)
+    permissions.checkPermission(message, constants.PERM_PERMISSIONS).or(constants.PERM_LISTING)
       .then((granted) => {
         if (granted) {
           showRoleList(bot, message, args[0])
@@ -384,9 +382,9 @@ export default function load(api) {
 
   register('users', {
     desc: 'Lists users and their snowflake identifiers (`flake_id`), useful for configuring permissions',
-    perm: `Requires \`${PERM_LISTING}\` or \`${PERM_PERMISSIONS}\``
+    perm: `Requires \`${constants.PERM_LISTING}\` or \`${constants.PERM_PERMISSIONS}\``
   }, (bot, message, args) => {
-    permissions.checkPermission(message, PERM_PERMISSIONS).or(PERM_LISTING)
+    permissions.checkPermission(message, constants.PERM_PERMISSIONS).or(constants.PERM_LISTING)
       .then((granted) => {
         if (granted) {
           showUserList(bot, message, args[0])
@@ -398,7 +396,7 @@ export default function load(api) {
 
   register('perm', {
     desc: 'Manages permisions',
-    perm: `Requires \`${PERM_PERMISSIONS}\``,
+    perm: `Requires \`${constants.PERM_PERMISSIONS}\``,
     extra: `**perm** <action>
 **perm list** [<page>]
 **perm grant|revoke role|user** <permission_node>
@@ -406,7 +404,7 @@ export default function load(api) {
 **perm show** <permission_node>
 **perm show user|role** <flake_id> [<page>]`
   }, (bot, message, args) => {
-    permissions.checkPermission(message, PERM_PERMISSIONS)
+    permissions.checkPermission(message, constants.PERM_PERMISSIONS)
       .then((granted) => {
         if (granted) {
           const action = args[0]
