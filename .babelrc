@@ -3,6 +3,9 @@
   "plugins": [
     ["babel-plugin-require-root-rewrite", {
       "basePath": "lib"
+    }],
+    ["babel-plugin-transform-builtin-extend", {
+      "globals": ["Error", "Array"]
     }]
   ]
 }

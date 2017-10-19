@@ -8,6 +8,7 @@ import plugins from '~/plugins'
 import * as utils from '~/utils'
 import options from '~/options'
 import PermissionManager from '~/PermissionManager'
+import GuildSettingsManager from '~/GuildSettingsManager'
 
 require('dotenv').config()
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN
@@ -41,12 +42,15 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
 
   const registeredCommands = new Map()
   const registeredListeners = []
+  // TODO: turn PermissionManager into ES6 class
   const permissions = PermissionManager(db, bot)
+  const guildSettings = new (GuildSettingsManager({db, bot}))()
 
   const PluginAPI = {
     db,
     bot,
     permissions,
+    guildSettings,
     options,
     getCommands() {
       return registeredCommands
