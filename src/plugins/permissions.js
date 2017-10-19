@@ -2,8 +2,7 @@ import { RichEmbed } from 'discord.js'
 import * as utils from '~/utils'
 
 const PERM_PERMISSIONS = 'permissions'
-const PERM_LIST_ROLES = 'list_roles'
-const PERM_LIST_USERS = 'list_users'
+const PERM_LISTING = 'listing'
 
 const PERMS_PER_PAGE = 5
 const USERS_PER_PAGE = 9
@@ -367,14 +366,13 @@ export default function load(api) {
   const { registerCommand: register, permissions } = api
 
   permissions.registerPermission(PERM_PERMISSIONS, 'Allows managing permissions using the !perm command (also allows using !roles and !users)')
-  permissions.registerPermission(PERM_LIST_ROLES, 'Allows listing roles using the !roles command')
-  permissions.registerPermission(PERM_LIST_USERS, 'Allows listing users using the !users command')
+  permissions.registerPermission(PERM_LISTING, 'Allows listing users and roles using the !users and !roles commands')
 
   register('roles', {
     desc: 'Lists roles and their snowflake identifiers (`flake_id`), useful for configuring permissions',
-    perm: `Requires \`${PERM_LIST_ROLES}\` or \`${PERM_PERMISSIONS}\``
+    perm: `Requires \`${PERM_LISTING}\` or \`${PERM_PERMISSIONS}\``
   }, (bot, message, args) => {
-    permissions.checkPermission(message, PERM_PERMISSIONS).or(PERM_LIST_ROLES)
+    permissions.checkPermission(message, PERM_PERMISSIONS).or(PERM_LISTING)
       .then((granted) => {
         if (granted) {
           showRoleList(bot, message, args[0])
@@ -386,9 +384,9 @@ export default function load(api) {
 
   register('users', {
     desc: 'Lists users and their snowflake identifiers (`flake_id`), useful for configuring permissions',
-    perm: `Requires \`${PERM_LIST_USERS}\` or \`${PERM_PERMISSIONS}\``
+    perm: `Requires \`${PERM_LISTING}\` or \`${PERM_PERMISSIONS}\``
   }, (bot, message, args) => {
-    permissions.checkPermission(message, PERM_PERMISSIONS).or(PERM_LIST_USERS)
+    permissions.checkPermission(message, PERM_PERMISSIONS).or(PERM_LISTING)
       .then((granted) => {
         if (granted) {
           showUserList(bot, message, args[0])
