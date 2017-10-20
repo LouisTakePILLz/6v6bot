@@ -2,11 +2,6 @@ import * as constants from '~/constants'
 import * as errors from '~/errors'
 import * as utils from '~/utils'
 
-const TEAM_NAMES_LIST = Object.keys(constants.TEAM_NAMES).map(x => '`' + x + '`').join(', ')
-
-const MSG_CMD_CHANNEL_NOT_REGISTERED = 'This text channel is not a registered command channel'
-const MSG_INVALID_TEAM_NAME = `The specified team name is invalid. Possible values: ${TEAM_NAMES_LIST}`
-
 export default function load(api) {
   const { registerCommand: register, permissions, guildSettings } = api
 
@@ -43,7 +38,7 @@ export default function load(api) {
             .then((registered) => {
 
               if (!registered) {
-                message.channel.send(MSG_CMD_CHANNEL_NOT_REGISTERED)
+                message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
                 return
               }
 
@@ -58,7 +53,7 @@ export default function load(api) {
                   message.channel.send('Lobby voice channel successfully set')
                 }, (err) => {
                   if (err instanceof errors.CommandChannelNotRegisteredError) {
-                    message.channel.send(MSG_CMD_CHANNEL_NOT_REGISTERED)
+                    message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
                     return
                   }
 
@@ -66,7 +61,7 @@ export default function load(api) {
                 })
 
             }, (err) => {
-              message.channel.send('An error occured while trying to lookup the command channel')
+              message.channel.send(constants.MSG_ERR_LOOKUP_CMDCHANNEL)
             })
         } else {
           message.channel.send('You don\'t have permission to set the lobby voice channel')
@@ -85,7 +80,7 @@ export default function load(api) {
           const teamName = args[0]
 
           if (constants.TEAM_NAMES[teamName] == null) {
-            message.channel.send(MSG_INVALID_TEAM_NAME)
+            message.channel.send(constants.MSG_INVALID_TEAM_NAME)
             return
           }
 
@@ -93,7 +88,7 @@ export default function load(api) {
             .then((registered) => {
 
               if (!registered) {
-                message.channel.send(MSG_CMD_CHANNEL_NOT_REGISTERED)
+                message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
                 return
               }
 
@@ -108,18 +103,19 @@ export default function load(api) {
                   message.channel.send(`Team voice channel successfully set for ${constants.TEAM_NAMES[teamName]}`)
                 }, (err) => {
                   if (err instanceof errors.CommandChannelNotRegisteredError) {
-                    message.channel.send(MSG_CMD_CHANNEL_NOT_REGISTERED)
+                    message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
                     return
                   }
                   if (err instanceof errors.InvalidTeamNameError) {
-                    message.channel.send(MSG_INVALID_TEAM_NAME)
+                    message.channel.send(constants.MSG_INVALID_TEAM_NAME)
+                    return
                   }
 
                   message.channel.send('An error occured while trying to set the lobby voice channel')
                 })
 
             }, (err) => {
-              message.channel.send('An error occured while trying to lookup the command channel')
+              message.channel.send(constants.MSG_ERR_LOOKUP_CMDCHANNEL)
             })
         } else {
           message.channel.send('You don\'t have permission to set team voice channels')
@@ -139,7 +135,7 @@ export default function load(api) {
               message.channel.send('Command channel successfully deleted')
             }, (err) => {
               if (err instanceof errors.CommandChannelNotRegisteredError) {
-                message.channel.send(MSG_CMD_CHANNEL_NOT_REGISTERED)
+                message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
                 return
               }
               message.channel.send('An error occured while trying to delete the command channel')

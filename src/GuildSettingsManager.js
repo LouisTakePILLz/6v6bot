@@ -32,6 +32,7 @@ const GuildSettingsManager = (env) => class GuildSettingsManager {
           }
 
           const query = { guildId, cmdChannelId, setting: { $in: ['lobbyChannel', 'voiceChannel'] } }
+
           env.db.collection('guilds')
             .deleteMany(query)
             .then(() => {
@@ -137,6 +138,37 @@ const GuildSettingsManager = (env) => class GuildSettingsManager {
             })
         }, (err) => {
           console.log('setTeamVoiceChannel DB ERROR 1', err)
+          reject(new errors.DbError(err))
+        })
+    })
+  }
+
+  getLobbyVoiceChannel(guildId, cmdChannelId) {
+    return new Promise((resolve, reject) => {
+      this.isCommandChannelRegistered(guildId, cmdChannelId)
+        .then((registered) => {
+          if (!registered) {
+            reject(new errors.CommandChannelNotRegisteredError())
+            return
+          }
+
+          const lobbyChannelQuery = { guildId, cmdChannelId, setting: 'lobbyChannel' }
+
+          env.db.collection('guilds')
+            .findOne(lobbyChannelQuery)
+            .then((doc) => {
+              if (doc == null) {
+                reject(new errors.ChannelConfigurationError('lobbyChannel is not set'))
+                return
+              }
+
+              resolve(doc.value)
+            }, (err) => {
+              console.log('getLobbyVoiceChannel DB ERROR 2', err)
+              reject(new errors.DbError(err))
+            })
+        }, (err) => {
+          console.log('getLobbyVoiceChannel DB ERROR 1', err)
           reject(new errors.DbError(err))
         })
     })
