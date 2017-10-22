@@ -143,36 +143,41 @@ const GuildSettingsManager = (env) => class GuildSettingsManager {
     })
   }
 
-  getLobbyVoiceChannel(guildId, cmdChannelId) {
-    return new Promise((resolve, reject) => {
-      this.isCommandChannelRegistered(guildId, cmdChannelId)
-        .then((registered) => {
-          if (!registered) {
-            reject(new errors.CommandChannelNotRegisteredError())
-            return
-          }
+  async getVoiceChannel(guildId, cmdChannelId, channelSetting) {
+    let settingQuery
 
-          const lobbyChannelQuery = { guildId, cmdChannelId, setting: 'lobbyChannel' }
+    if (channelSetting == 'lobby') {
+      settingQuery = { setting: 'lobbyChannel' }
+    } else if (channelSetting == 'team1') {
+      settingQuery = { setting: 'voiceChannel', teamName: 'team1' }
+    } else if (channelSetting == 'team2') {
+      settingQuery = { setting: 'voiceChannel', teamName: 'team2' }
+    } else {
+      throw new Error('Invalid channel setting')
+    }
 
-          env.db.collection('guilds')
-            .findOne(lobbyChannelQuery)
-            .then((doc) => {
-              if (doc == null) {
-                reject(new errors.ChannelConfigurationError('lobbyChannel is not set'))
-                return
-              }
+    const registered = await this.isCommandChannelRegistered(guildId, cmdChannelId)
+    if (!registered) {
+      throw new errors.CommandChannelNotRegisteredError()
+    }
 
-              resolve(doc.value)
-            }, (err) => {
-              console.log('getLobbyVoiceChannel DB ERROR 2', err)
-              reject(new errors.DbError(err))
-            })
-        }, (err) => {
-          console.log('getLobbyVoiceChannel DB ERROR 1', err)
-          reject(new errors.DbError(err))
-        })
-    })
+    const channelQuery = { guildId, cmdChannelId, ...settingQuery }
+
+    let doc
+
+    try {
+      doc = await env.db.collection('guilds').findOne(channelQuery)
+    } catch (err) {
+      throw new errors.DbError(err)
+    }
+
+    if (doc == null) {
+      throw new errors.ChannelConfigurationError(channelSetting, `${channelSetting} is not set`)
+    }
+
+    return doc.value
   }
+
 }
 
 export default GuildSettingsManager

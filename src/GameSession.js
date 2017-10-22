@@ -6,6 +6,7 @@ const GameSession = (env) => class GameSession {
   constructor(guild, cmdChannel) {
     this.guild = guild
     this.cmdChannel = cmdChannel
+    this.initialized = false
     this.started = false
     this.gameRules = new (GameRuleManager(env))()
     this._resetTeams()
@@ -20,21 +21,16 @@ const GameSession = (env) => class GameSession {
   }
 
   _getVoiceChannel(voiceChannelId) {
+    if (voiceChannelId == null) {
+      return
+    }
+
     const voiceChannel = this.guild.channels.get(voiceChannelId)
     if (voiceChannel == null || voiceChannel.type !== 'voice') {
       return null
     }
 
     return voiceChannel
-  }
-
-  _getLobbyVoiceChannel() {
-    return new Promise((resolve, reject) => {
-      env.api.guildSettings.getLobbyVoiceChannel(this.guild.id, this.cmdChannel.id)
-        .then((lobbyVoiceChannelId) => {
-          resolve(this._getVoiceChannel(lobbyVoiceChannelId))
-        }, reject)
-    })
   }
 
   _pickRandomTeamLeader(teamName, members) {
@@ -123,33 +119,60 @@ const GameSession = (env) => class GameSession {
     this.lastTurn = teamName
   }
 
-  // TODO: implement event system or return promises?
+  async moveMembersToChannels() {
+    const lobbyVoiceChannel = this._getVoiceChannel(
+      await env.api.guildSettings.getVoiceChannel(this.guild.id, this.cmdChannel.id, 'lobby')
+    )
+    const team1VoiceChannel = this._getVoiceChannel(
+      await env.api.guildSettings.getVoiceChannel(this.guild.id, this.cmdChannel.id, 'team1')
+    )
+    const team2VoiceChannel = this._getVoiceChannel(
+      await env.api.guildSettings.getVoiceChannel(this.guild.id, this.cmdChannel.id, 'team2')
+    )
 
-  start() {
-    return new Promise((resolve, reject) => {
-      this._getLobbyVoiceChannel()
-        .then((lobbyVoiceChannel) => {
-          if (lobbyVoiceChannel == null) {
-            reject(new errors.ChannelConfigurationError('Missing lobby voice channel'))
-            return
-          }
+    if (this.teams.team1.leader != null) {
+      await this.teams.team1.leader.setVoiceChannel(team1VoiceChannel)
+    }
 
-          if (this.gameRules.isEnabled('randomLeaders')) {
-            console.log('randomLeaders enabled')
-            this._resetTeams()
-            const memberPool = [...lobbyVoiceChannel.members.values()]
-            this._pickRandomTeamLeader('team1', memberPool)
-            this._pickRandomTeamLeader('team2', memberPool)
-          }
+    for (const [,member] of this.teams.team1.members) {
+      await member.setVoiceChannel(team1VoiceChannel)
+    }
 
-          this.started = true
-          resolve()
-        }, (err) => {
-          console.log('getLobbyVoiceChannel ERROR', err)
-          reject(err)
-        })
-        .catch(reject)
-    })
+    if (this.teams.team2.leader != null) {
+      await this.teams.team2.leader.setVoiceChannel(team2VoiceChannel)
+    }
+
+    for (const [,member] of this.teams.team2.members) {
+      await member.setVoiceChannel(team2VoiceChannel)
+    }
+  }
+
+  async setup() {
+    const lobbyVoiceChannel = this._getVoiceChannel(
+      await env.api.guildSettings.getVoiceChannel(this.guild.id, this.cmdChannel.id, 'lobby')
+    )
+
+    if (this.gameRules.isEnabled('randomLeaders')) {
+      console.log('randomLeaders enabled')
+      this._resetTeams()
+      const memberPool = [...lobbyVoiceChannel.members.values()]
+      this._pickRandomTeamLeader('team1', memberPool)
+      this._pickRandomTeamLeader('team2', memberPool)
+    }
+
+    this.initialized = true
+  }
+
+  async start() {
+    try {
+      await this.moveMembersToChannels()
+    } catch (err) {
+      if (err instanceof errors.DiscordAPIError && err.code === 50013) {
+        throw new errors.MissingMovePermissionError()
+      }
+
+      throw err
+    }
   }
 
   stop() {

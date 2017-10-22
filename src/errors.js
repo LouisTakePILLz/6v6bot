@@ -15,7 +15,13 @@ export class InvalidGameRuleValue extends Error {
 }
 
 // Used for reporting missing channels...
-export class ChannelConfigurationError extends GenericError {}
+export class ChannelConfigurationError extends GenericError {
+  constructor(value, ...params) {
+    super(...params)
+
+    this.channel = value
+  }
+}
 
 export class CommandChannelNotRegisteredError extends Error {}
 
@@ -31,4 +37,8 @@ export class DuplicatePlayerError extends GenericError {}
 
 export class NotEnoughPlayersError extends GenericError {}
 
+export class MissingMovePermissionError extends GenericError {}
+
 export class DbError extends Error {}
+
+export { DiscordAPIError } from 'discord.js'

@@ -5,7 +5,7 @@ import gameRules from '~/gameRules'
 import GameSession from '~/GameSession'
 import { RichEmbed } from 'discord.js'
 
-const MSG_NO_GAME_SESSION = 'No on-going game session, type `!start` to start'
+const MSG_NO_GAME_SESSION = 'No on-going game session, type `!setup` to initialize the game session'
 
 // Map<ServerId, Map<TextChannelId, GameSession>>
 const serverSessions = new Map()
@@ -63,7 +63,7 @@ export default function load(api) {
     permissions.checkPermission(message, constants.PERM_SETLEADER).or(constants.PERM_ADMIN)
       .then((granted) => {
 
-        if (!session.started) {
+        if (!session.initialized) {
           message.channel.send(MSG_NO_GAME_SESSION)
           return
         }
@@ -101,7 +101,7 @@ export default function load(api) {
     permissions.checkPermission(message, constants.PERM_ADMIN)
       .then((adminGranted) => {
 
-        if (!session.started) {
+        if (!session.initialized) {
           message.channe.send(MSG_NO_GAME_SESSION)
           return
         }
@@ -174,7 +174,7 @@ export default function load(api) {
     permissions.checkPermission(message, constants.PERM_ADMIN)
       .then((adminGranted) => {
 
-        if (!session.started) {
+        if (!session.initialized) {
           message.channel.send(MSG_NO_GAME_SESSION)
           return
         }
@@ -273,7 +273,7 @@ export default function load(api) {
         }
 
         const session = getGameSession({bot, api}, guild, message.channel)
-        if (!session.started) {
+        if (!session.initialized) {
           message.channel.send(MSG_NO_GAME_SESSION)
           return
         }
@@ -306,6 +306,60 @@ export default function load(api) {
   register('start', {
     desc: 'Starts the game session',
     perm: `Requires \`${constants.PERM_SETUP}\` or \`${constants.PERM_ADMIN}\``
+  }, async (bot, message, args) => {
+    const { guild } = message
+
+    const granted = await permissions.checkPermission(message, constants.PERM_SETUP).or(constants.PERM_ADMIN)
+
+    if (granted) {
+      try {
+        const registered = await guildSettings.isCommandChannelRegistered(guild.id, message.channel.id)
+        if (!registered) {
+          message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
+          return
+        }
+      } catch (err) {
+        message.channel.send(constants.MSG_ERR_LOOKUP_CMDCHANNEL)
+      }
+
+      const session = getGameSession({bot, api}, guild, message.channel)
+
+      if (!session.initialized) {
+        message.channel.send(MSG_NO_GAME_SESSION)
+        return
+      }
+
+      if (session.started) {
+        message.channel.send('Game session already started, type `!end` to stop')
+        return
+      }
+
+      try {
+        await session.start()
+        message.channel.send('Game session started!')
+      } catch (err) {
+        console.log('start game session ERROR', err)
+        if (err instanceof errors.ChannelConfigurationError) {
+          message.channel.send(`Invalid configuration; the \`${err.channel}\` channel isn't set`)
+          return
+        }
+        if (err instanceof errors.MissingMovePermissionError) {
+          message.channel.send('An error occured while trying to move users to the voice channels; does the bot have voice channel permissions?')
+          return
+        }
+
+        message.channel.send('An error occured while trying to start the game session')
+      }
+
+
+    } else {
+      message.channel.send('You don\'t have permission to start the 6v6 session')
+    }
+  })
+
+  register('setup', {
+    desc: 'Initializes the game session',
+    perm: `Requires \`${constants.PERM_SETUP}\` or \`${constants.PERM_ADMIN}\``
   }, (bot, message, args) => {
     const { guild } = message
 
@@ -323,14 +377,14 @@ export default function load(api) {
 
               const session = getGameSession({bot, api}, guild, message.channel)
 
-              if (session.started) {
-                message.channel.send('Game session already started, type `!end` to stop')
+              if (session.initialized) {
+                message.channel.send('Game session already initialized, type `!end` to stop')
                 return
               }
 
-              session.start()
+              session.setup()
                 .then(() => {
-                  let msg = 'Game session started!'
+                  let msg = 'Game session initialized!'
 
                   if (session.gameRules.isEnabled('randomLeaders')) {
                     msg += `\n${session.teams.team1.leader} was randomly chosen as leader for ${constants.TEAM_NAMES.team1}`
@@ -345,19 +399,19 @@ export default function load(api) {
                   }
 
                   if (err instanceof errors.ChannelConfigurationError) {
-                    message.channel.send(`ChannelConfigurationError: ${err.errMsg}`)
+                    message.channel.send(`Invalid configuration; the \`${err.channel}\` channel isn't set`)
                     return
                   }
 
-                  console.log('start game ERROR', err)
-                  message.channel.send('An error occured while trying to start the game session')
+                  console.log('setup game ERROR', err)
+                  message.channel.send('An error occured while trying to setup the game session')
                 })
             }, (err) => {
               message.channel.send(constants.MSG_ERR_LOOKUP_CMDCHANNEL)
             })
 
         } else {
-          message.channel.send('You don\'t have permission to start a 6v6 session')
+          message.channel.send('You don\'t have permission to setup a 6v6 session')
         }
       })
   })
