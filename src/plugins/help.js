@@ -4,7 +4,11 @@ import * as utils from '~/utils'
 const COMMANDS_PER_PAGE = 5
 
 export default function load({registerCommand: register, getCommands}) {
-  register('help', 'Displays this help message', (bot, message, args) => {
+  register('help', {
+    desc: 'Displays the available commands and their purpose. If a command name is specified, specific help information will be displayed',
+    adv: 'Displays the available commands and their purpose.\n...what else did you expect?',
+    extra: '**help** [<page>]\n**help** <command>'
+  }, (bot, message, args) => {
     const embed = new RichEmbed()
       .setColor(0xA94AE8)
       .setTimestamp()
@@ -34,7 +38,7 @@ export default function load({registerCommand: register, getCommands}) {
       embed
         .setTitle(`6v6 - Help: \`${utils.sanitizeCode(commandName)}\``)
         .setFooter('Command info', 'https://cdn.discordapp.com/embed/avatars/0.png')
-        .addField('__**Description**__', command.helpInfo.desc, false)
+        .addField('__**Description**__', command.helpInfo.adv || command.helpInfo.desc, false)
 
       if (command.helpInfo.perm != null) {
         embed.addField('__**Permissions**__', command.helpInfo.perm, false)
