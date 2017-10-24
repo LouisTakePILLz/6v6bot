@@ -388,7 +388,8 @@ export default function load(api) {
 
                   if (session.gameRules.isEnabled('randomLeaders')) {
                     msg += `\n${session.teams.team1.leader} was randomly chosen as leader for ${constants.TEAM_NAMES.team1}`
-                    msg += `\n${session.teams.team2.leader} was randomly chosen as leader for ${constants.TEAM_NAMES.team2}`
+                         + `\n${session.teams.team2.leader} was randomly chosen as leader for ${constants.TEAM_NAMES.team2}`
+                         + `\n\n${session.teams[session.getTurn()].leader} gets to pick first`
                   }
 
                   message.channel.send(msg)
