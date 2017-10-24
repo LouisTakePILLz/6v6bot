@@ -26,6 +26,19 @@ export function stringToBoolean(input) {
   return null
 }
 
+export function resolveVoiceChannel(guild, voiceChannelId) {
+  if (voiceChannelId == null) {
+    return
+  }
+
+  const voiceChannel = guild.channels.get(voiceChannelId)
+  if (voiceChannel == null || voiceChannel.type !== 'voice') {
+    return null
+  }
+
+  return voiceChannel
+}
+
 export function getUserVoiceChannel(bot, guild, user) {
   return guild.channels.find((channel) => {
     if (channel.type === 'voice' && channel.members.find((member) => member.id === user.id) != null) {

@@ -143,7 +143,7 @@ const GuildSettingsManager = (env) => class GuildSettingsManager {
     })
   }
 
-  async getVoiceChannel(guildId, cmdChannelId, channelSetting) {
+  async getVoiceChannelId(guildId, cmdChannelId, channelSetting) {
     let settingQuery
 
     if (channelSetting == 'lobby') {

@@ -26,7 +26,7 @@ function getGameSession(env, guild, channel) {
   return session
 }
 
-function displayTeams(env, channel) {
+function displayTeams(env, channel, textMessage) {
   const formatUserEntry = (member) => {
     const entry = `**${member.displayName}**`
     return utils.sanitizeCode(entry)
@@ -47,7 +47,11 @@ function displayTeams(env, channel) {
     .addField('__**Team 1**__', getMemberList('team1'), true)
     .addField('__**Team 2**__', getMemberList('team2'), true)
 
-  channel.send({embed})
+  if (textMessage != null) {
+    channel.send(textMessage, {embed})
+  } else {
+    channel.send({embed})
+  }
 }
 
 export default function load(api) {
@@ -74,37 +78,91 @@ export default function load(api) {
   register('setleader', {
     desc: 'Sets the team leader for a specified team',
     perm: `Requires \`${constants.PERM_SETLEADER}\` or \`${constants.PERM_ADMIN}\``,
-    extra: '**setleader** <flake_id> team1|team2'
-  }, (bot, message, args) => {
+    extra: '**setleader** <flake_id>|random team1|team2'
+  }, async (bot, message, args) => {
     const mention = args[0]
     const teamName = args[1]
-    const session = getGameSession({bot, api}, message.guild, message.channel)
 
-    permissions.checkPermission(message, constants.PERM_SETLEADER).or(constants.PERM_ADMIN)
-      .then((granted) => {
+    const granted = await permissions.checkPermission(message, constants.PERM_SETLEADER).or(constants.PERM_ADMIN)
+    if (granted) {
 
-        if (!session.initialized) {
-          message.channel.send(MSG_NO_GAME_SESSION)
+      const registered = await guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
+      if (!registered) {
+        message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
+        return
+      }
+
+      const session = getGameSession({bot, api}, message.guild, message.channel)
+      if (!session.initialized) {
+        message.channel.send(MSG_NO_GAME_SESSION)
+        return
+      }
+
+      let targetMember
+      let msg
+
+      if (mention === 'random') {
+
+        if (session.started) {
+          message.channel.send('You can\'t reroll team leaders when the game session has already started')
           return
         }
 
-        if (constants.TEAM_NAMES[teamName] == null) {
-          message.channel.send(constants.MSG_INVALID_TEAM_NAME)
+        const lobbyVoiceChannel = utils.resolveVoiceChannel(
+          message.guild,
+          await api.guildSettings.getVoiceChannelId(message.guild.id, message.channel.id, 'lobby')
+        )
+        const memberPool = [...lobbyVoiceChannel.members.values()]
+
+        const teamLeader = session.teams[teamName].leader
+        const teamLeaderIndex = memberPool.findIndex(x => x.id === teamLeader.id)
+        if (teamLeaderIndex != null) {
+          memberPool.splice(teamLeaderIndex, 1)
+        }
+
+        const enemyTeam = teamName === 'team1' ? 'team2' : 'team1'
+        const enemyLeader = session.teams[enemyTeam].leader
+        const enemyLeaderIndex = memberPool.findIndex(x => x.id === enemyLeader.id)
+        if (enemyLeaderIndex != null) {
+          memberPool.splice(enemyLeaderIndex, 1)
+        }
+
+        if (memberPool.length === 0) {
+          message.channel.send(constants.MSG_NOT_ENOUGH_PLAYERS_RANDOM_LEADER)
           return
         }
 
-        const targetMember = utils.resolveMember(message.guild, mention)
+        const randomMember = memberPool[Math.floor(Math.random() * memberPool.length)]
+
+        if (session.teams.team1.members.delete(randomMember.id)) {
+          msg = `${targetMember} has been removed from ${constants.TEAM_NAMES.team1} and set as the team leader for ${constants.TEAM_NAMES[teamName]}`
+        }
+        else if (session.teams.team2.members.delete(randomMember.id)) {
+          msg = `${targetMember} has been removed from ${constants.TEAM_NAMES.team2} and set as the team leader for ${constants.TEAM_NAMES[teamName]}`
+        }
+
+        targetMember = randomMember
+      } else {
+        targetMember = utils.resolveMember(message.guild, mention)
 
         if (targetMember == null) {
-          message.channel.send(constants.MESSAGE_INVALID_TARGET_MEMBER)
+          message.channel.send(constants.MSG_INVALID_TARGET_MEMBER)
           return
         }
+      }
 
-        session.teams[teamName].leader = targetMember
+      if (constants.TEAM_NAMES[teamName] == null) {
+        message.channel.send(constants.MSG_INVALID_TEAM_NAME)
+        return
+      }
 
-        message.channel.send(`${targetMember} has been set as the team leader for ${constants.TEAM_NAMES[teamName]}`)
+      session.teams[teamName].leader = targetMember
 
-      })
+      message.channel.send(msg || `${targetMember} has been set as the team leader for ${constants.TEAM_NAMES[teamName]}`)
+
+    } else {
+      message.channel.send('You don\'t have permission to set team leaders')
+    }
   })
 
   register('unpick', {
@@ -130,7 +188,7 @@ export default function load(api) {
         const targetMember = utils.resolveMember(message.guild, mention)
 
         if (targetMember == null) {
-          message.channel.send(constants.MESSAGE_INVALID_TARGET_MEMBER)
+          message.channel.send(constants.MSG_INVALID_TARGET_MEMBER)
           return
         }
 
@@ -195,21 +253,28 @@ export default function load(api) {
           return
         }
 
-        const team1Leader = session.teams.team1.leader || {}
-        const team2Leader = session.teams.team2.leader || {}
+        const team1Leader = session.teams.team1.leader
+        const team2Leader = session.teams.team2.leader
 
         if (teamName == null &&
-            message.member.id !== team1Leader.id &&
-            message.member.id !== team2Leader.id
+          (
+            (team1Leader != null && message.member.id !== team1Leader.id) &&
+            (team2Leader != null && message.member.id !== team2Leader.id)
+          )
         ) {
           message.channel.send('Can\'t add players to team, you are not the team leader')
+          return
+        }
+
+        if (team1Leader == null || team2Leader == null) {
+          message.channel.send('Both team leaders need to be set before picking')
           return
         }
 
         const targetMember = utils.resolveMember(message.guild, mention)
 
         if (targetMember == null) {
-          message.channel.send(constants.MESSAGE_INVALID_TARGET_MEMBER)
+          message.channel.send(constants.MSG_INVALID_TARGET_MEMBER)
           return
         }
 
@@ -331,9 +396,7 @@ export default function load(api) {
       try {
         await session.start()
 
-        displayTeams({session}, message.channel)
-
-        message.channel.send('Game session started!')
+        displayTeams({session}, message.channel, 'Game session started!\n')
       } catch (err) {
         console.log('start game session ERROR', err)
 

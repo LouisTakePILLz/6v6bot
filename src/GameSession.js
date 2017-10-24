@@ -1,5 +1,6 @@
 import * as constants from '~/constants'
 import * as errors from '~/errors'
+import * as utils from '~/utils'
 import GameRuleManager from '~/GameRuleManager'
 
 const GameSession = (env) => class GameSession {
@@ -20,19 +21,6 @@ const GameSession = (env) => class GameSession {
     }
   }
 
-  _getVoiceChannel(voiceChannelId) {
-    if (voiceChannelId == null) {
-      return
-    }
-
-    const voiceChannel = this.guild.channels.get(voiceChannelId)
-    if (voiceChannel == null || voiceChannel.type !== 'voice') {
-      return null
-    }
-
-    return voiceChannel
-  }
-
   _pickRandomTeamLeader(teamName, members) {
     if (teamName !== 'team1' && teamName !== 'team2') {
       throw new errors.InvalidTeamNameError(teamName)
@@ -49,7 +37,7 @@ const GameSession = (env) => class GameSession {
     }
 
     if (members.length === 0) {
-      throw new errors.NotEnoughPlayersError('Not enough players available to pick the team leaders')
+      throw new errors.NotEnoughPlayersError(constants.MSG_NOT_ENOUGH_PLAYERS_RANDOM_LEADER)
     }
 
     const randomMember = members[Math.floor(Math.random() * members.length)]
@@ -120,23 +108,26 @@ const GameSession = (env) => class GameSession {
   }
 
   async moveMembersToChannels() {
-    const lobbyVoiceChannel = this._getVoiceChannel(
-      await env.api.guildSettings.getVoiceChannel(this.guild.id, this.cmdChannel.id, 'lobby')
+    const lobbyVoiceChannel = utils.resolveVoiceChannel(
+      this.guild,
+      await env.api.guildSettings.getVoiceChannelId(this.guild.id, this.cmdChannel.id, 'lobby')
     )
-    const team1VoiceChannel = this._getVoiceChannel(
-      await env.api.guildSettings.getVoiceChannel(this.guild.id, this.cmdChannel.id, 'team1')
+    const team1VoiceChannel = utils.resolveVoiceChannel(
+      this.guild,
+      await env.api.guildSettings.getVoiceChannelId(this.guild.id, this.cmdChannel.id, 'team1')
     )
-    const team2VoiceChannel = this._getVoiceChannel(
-      await env.api.guildSettings.getVoiceChannel(this.guild.id, this.cmdChannel.id, 'team2')
+    const team2VoiceChannel = utils.resolveVoiceChannel(
+      this.guild,
+      await env.api.guildSettings.getVoiceChannelId(this.guild.id, this.cmdChannel.id, 'team2')
     )
 
     const forceVoice = this.gameRules.isEnabled('forceVoice')
 
     const moveToVoiceChannel = async (member, voiceChannel) => {
       if (forceVoice || member.voiceChannelID === lobbyVoiceChannel.id) {
+      }
         await member.setVoiceChannel(voiceChannel)
       }
-    }
 
     // Move Team 1
 
@@ -160,8 +151,9 @@ const GameSession = (env) => class GameSession {
   }
 
   async moveMembersToLobby() {
-    const lobbyVoiceChannel = this._getVoiceChannel(
-      await env.api.guildSettings.getVoiceChannel(this.guild.id, this.cmdChannel.id, 'lobby')
+    const lobbyVoiceChannel = utils.resolveVoiceChannel(
+      this.guild,
+      await env.api.guildSettings.getVoiceChannelId(this.guild.id, this.cmdChannel.id, 'lobby')
     )
 
     if (this.teams.team1.leader != null) {
@@ -184,8 +176,9 @@ const GameSession = (env) => class GameSession {
   }
 
   async setup(shouldReset = true) {
-    const lobbyVoiceChannel = this._getVoiceChannel(
-      await env.api.guildSettings.getVoiceChannel(this.guild.id, this.cmdChannel.id, 'lobby')
+    const lobbyVoiceChannel = utils.resolveVoiceChannel(
+      this.guild,
+      await env.api.guildSettings.getVoiceChannelId(this.guild.id, this.cmdChannel.id, 'lobby')
     )
 
     if (shouldReset) {
@@ -218,6 +211,7 @@ const GameSession = (env) => class GameSession {
   async end() {
     try {
       await this.moveMembersToLobby()
+      this._resetTeams()
 
       this.started = false
     } catch (err) {
