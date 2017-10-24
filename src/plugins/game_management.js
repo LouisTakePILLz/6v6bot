@@ -43,7 +43,7 @@ function displayTeams(env, channel) {
     .setDescription('Drafted Teams')
     .setColor(0xA94AE8)
     .setTimestamp()
-    .setFooter('6v6 draft', 'https://cdn.discordapp.com/embed/avatars/0.png')
+    .setFooter('Team drafts', 'https://cdn.discordapp.com/embed/avatars/0.png')
     .addField('__**Team 1**__', getMemberList('team1'), true)
     .addField('__**Team 2**__', getMemberList('team2'), true)
 
@@ -61,8 +61,6 @@ export default function load(api) {
     desc: 'Manages game rules',
     perm: `Requires \`${constants.PERM_GAMERULE}\` or \`${constants.PERM_ADMIN}\``
   }, (bot, message, args) => {
-    const { guild } = message
-
     permissions.checkPermission(message, constants.PERM_GAMERULE).or(constants.PERM_ADMIN)
       .then((granted) => {
         if (granted) {
@@ -78,11 +76,9 @@ export default function load(api) {
     perm: `Requires \`${constants.PERM_SETLEADER}\` or \`${constants.PERM_ADMIN}\``,
     extra: '**setleader** <flake_id> team1|team2'
   }, (bot, message, args) => {
-    const { guild } = message
-
     const mention = args[0]
     const teamName = args[1]
-    const session = getGameSession({bot, api}, guild, message.channel)
+    const session = getGameSession({bot, api}, message.guild, message.channel)
 
     permissions.checkPermission(message, constants.PERM_SETLEADER).or(constants.PERM_ADMIN)
       .then((granted) => {
@@ -97,7 +93,7 @@ export default function load(api) {
           return
         }
 
-        const targetMember = utils.resolveMember(guild, mention)
+        const targetMember = utils.resolveMember(message.guild, mention)
 
         if (targetMember == null) {
           message.channel.send(constants.MESSAGE_INVALID_TARGET_MEMBER)
@@ -116,11 +112,9 @@ export default function load(api) {
     perm: `Only works if used by a team leader. Team picks can be forced with the \`${constants.PERM_ADMIN}\` permission`,
     extra: '**unpick** <flake_id>'
   }, (bot, message, args) => {
-    const { guild } = message
-
     const mention = args[0]
     const teamName = args[1]
-    const session = getGameSession({bot, api}, guild, message.channel)
+    const session = getGameSession({bot, api}, message.guild, message.channel)
 
     permissions.checkPermission(message, constants.PERM_ADMIN)
       .then((adminGranted) => {
@@ -133,7 +127,7 @@ export default function load(api) {
         const team1Leader = session.teams.team1.leader || {}
         const team2Leader = session.teams.team2.leader || {}
 
-        const targetMember = utils.resolveMember(guild, mention)
+        const targetMember = utils.resolveMember(message.guild, mention)
 
         if (targetMember == null) {
           message.channel.send(constants.MESSAGE_INVALID_TARGET_MEMBER)
@@ -189,11 +183,9 @@ export default function load(api) {
     perm: `Only works if used by a team leader. Team picks can be forced with the \`${constants.PERM_ADMIN}\` permission`,
     extra: '**pick** <flake_id> [team1|team2]'
   }, (bot, message, args) => {
-    const { guild } = message
-
     const mention = args[0]
     const teamName = args[1]
-    const session = getGameSession({bot, api}, guild, message.channel)
+    const session = getGameSession({bot, api}, message.guild, message.channel)
 
     permissions.checkPermission(message, constants.PERM_ADMIN)
       .then((adminGranted) => {
@@ -214,7 +206,7 @@ export default function load(api) {
           return
         }
 
-        const targetMember = utils.resolveMember(guild, mention)
+        const targetMember = utils.resolveMember(message.guild, mention)
 
         if (targetMember == null) {
           message.channel.send(constants.MESSAGE_INVALID_TARGET_MEMBER)
@@ -286,9 +278,8 @@ export default function load(api) {
   register('teams', {
     desc: 'Displays the teams and their members'
   }, (bot, message, args) => {
-    const { guild } = message
 
-    guildSettings.isCommandChannelRegistered(guild.id, message.channel.id)
+    guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
       .then((registered) => {
 
         if (!registered) {
@@ -296,7 +287,7 @@ export default function load(api) {
           return
         }
 
-        const session = getGameSession({bot, api}, guild, message.channel)
+        const session = getGameSession({bot, api}, message.guild, message.channel)
         if (!session.initialized) {
           message.channel.send(MSG_NO_GAME_SESSION)
           return
@@ -311,13 +302,12 @@ export default function load(api) {
     desc: 'Starts the game session',
     perm: `Requires \`${constants.PERM_SETUP}\` or \`${constants.PERM_ADMIN}\``
   }, async (bot, message, args) => {
-    const { guild } = message
 
     const granted = await permissions.checkPermission(message, constants.PERM_SETUP).or(constants.PERM_ADMIN)
 
     if (granted) {
       try {
-        const registered = await guildSettings.isCommandChannelRegistered(guild.id, message.channel.id)
+        const registered = await guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
         if (!registered) {
           message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
           return
@@ -326,7 +316,7 @@ export default function load(api) {
         message.channel.send(constants.MSG_ERR_LOOKUP_CMDCHANNEL)
       }
 
-      const session = getGameSession({bot, api}, guild, message.channel)
+      const session = getGameSession({bot, api}, message.guild, message.channel)
 
       if (!session.initialized) {
         message.channel.send(MSG_NO_GAME_SESSION)
@@ -360,23 +350,70 @@ export default function load(api) {
         message.channel.send('An error occured while trying to start the game session')
       }
 
-
     } else {
       message.channel.send('You don\'t have permission to start the 6v6 session')
     }
   })
 
+  register('end', {
+    desc: 'Terminates the game session',
+    perm: `Requires \`${constants.PERM_SETUP}\` or \`${constants.PERM_ADMIN}\``
+  }, async (bot, message, args) => {
+    const granted = await permissions.checkPermission(message, constants.PERM_SETUP).or(constants.PERM_ADMIN)
+
+    if (granted) {
+
+      try {
+        const registered = await guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
+        if (!registered) {
+          message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
+          return
+        }
+      } catch (err) {
+        message.channel.send(constants.MSG_ERR_LOOKUP_CMDCHANNEL)
+      }
+
+      const session = getGameSession({bot, api}, message.guild, message.channel)
+
+      if (!session.initialized) {
+        message.channel.send(MSG_NO_GAME_SESSION)
+        return
+      }
+
+      try {
+        await session.end()
+        message.channel.send('The game session has been terminated')
+      } catch (err) {
+       console.log('end game session ERROR', err)
+
+       if (err instanceof errors.ChannelConfigurationError) {
+         message.channel.send(`Invalid configuration; the \`${err.channel}\` channel isn't set`)
+         return
+       }
+
+       if (err instanceof errors.MissingMovePermissionError) {
+         message.channel.send('An error occured while trying to move users to the lobby voice channel; does the bot have voice channel permissions?')
+         return
+       }
+
+       message.channel.send('An error occured while trying to terminate the game session')
+     }
+
+
+    } else {
+      message.channel.send('You don\'t have permission to terminate the game session')
+    }
+  })
+
   register('setup', {
-    desc: 'Initializes the game session',
+    desc: 'Initializes (or resets) the game session',
     perm: `Requires \`${constants.PERM_SETUP}\` or \`${constants.PERM_ADMIN}\``
   }, (bot, message, args) => {
-    const { guild } = message
-
     permissions.checkPermission(message, constants.PERM_SETUP).or(constants.PERM_ADMIN)
       .then((granted) => {
         if (granted) {
 
-          guildSettings.isCommandChannelRegistered(guild.id, message.channel.id)
+          guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
             .then((registered) => {
 
               if (!registered) {
@@ -384,10 +421,10 @@ export default function load(api) {
                 return
               }
 
-              const session = getGameSession({bot, api}, guild, message.channel)
+              const session = getGameSession({bot, api}, message.guild, message.channel)
 
-              if (session.initialized) {
-                message.channel.send('Game session already initialized, type `!end` to stop')
+              if (session.started) {
+                message.channel.send('Game session already started, type `!end` to stop')
                 return
               }
 
@@ -421,7 +458,7 @@ export default function load(api) {
             })
 
         } else {
-          message.channel.send('You don\'t have permission to setup a 6v6 session')
+          message.channel.send('You don\'t have permission to setup a game session')
         }
       })
   })

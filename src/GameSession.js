@@ -159,14 +159,40 @@ const GameSession = (env) => class GameSession {
     }
   }
 
-  async setup() {
+  async moveMembersToLobby() {
     const lobbyVoiceChannel = this._getVoiceChannel(
       await env.api.guildSettings.getVoiceChannel(this.guild.id, this.cmdChannel.id, 'lobby')
     )
 
-    if (this.gameRules.isEnabled('randomLeaders')) {
-      console.log('randomLeaders enabled')
+    if (this.teams.team1.leader != null) {
+      await this.teams.team1.leader.setVoiceChannel(lobbyVoiceChannel)
+    }
+
+    for (const [,member] of this.teams.team1.members) {
+      await member.setVoiceChannel(lobbyVoiceChannel)
+    }
+
+    // Move Team 2
+
+    if (this.teams.team2.leader != null) {
+      await this.teams.team2.leader.setVoiceChannel(lobbyVoiceChannel)
+    }
+
+    for (const [,member] of this.teams.team2.members) {
+      await member.setVoiceChannel(lobbyVoiceChannel)
+    }
+  }
+
+  async setup(shouldReset = true) {
+    const lobbyVoiceChannel = this._getVoiceChannel(
+      await env.api.guildSettings.getVoiceChannel(this.guild.id, this.cmdChannel.id, 'lobby')
+    )
+
+    if (shouldReset) {
       this._resetTeams()
+    }
+
+    if (this.gameRules.isEnabled('randomLeaders')) {
       const memberPool = [...lobbyVoiceChannel.members.values()]
       this._pickRandomTeamLeader('team1', memberPool)
       this._pickRandomTeamLeader('team2', memberPool)
@@ -178,6 +204,8 @@ const GameSession = (env) => class GameSession {
   async start() {
     try {
       await this.moveMembersToChannels()
+
+      this.started = true
     } catch (err) {
       if (err instanceof errors.DiscordAPIError && err.code === 50013) {
         throw new errors.MissingMovePermissionError()
@@ -187,8 +215,18 @@ const GameSession = (env) => class GameSession {
     }
   }
 
-  stop() {
+  async end() {
+    try {
+      await this.moveMembersToLobby()
 
+      this.started = false
+    } catch (err) {
+      if (err instanceof errors.DiscordAPIError && err.code === 50013) {
+        throw new errors.MissingMovePermissionError()
+      }
+
+      throw err
+    }
   }
 }
 
