@@ -30,6 +30,7 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
   })
 
   function* getCommand(content) {
+    // TODO: add quote support
     const pattern = /(\S+)/g
     let match
 
@@ -72,11 +73,17 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
   Array.forEach(plugins, plugin => plugin(PluginAPI))
 
   bot.on('message', (message) => {
-    if (message.content.indexOf('!') === 0) {
-      const args = [...getCommand(message.content.substr(1))]
+    const mentionPattern = /^<@!?(\d+)> /g
+    const matches = mentionPattern.exec(message.content)
+    if (matches == null) {
+      return
+    }
+
+    const [match, memberId] = matches
+    if (memberId === bot.user.id) {
+      const args = [...getCommand(message.content.substr(match.length))]
       const cmd = args.shift().toLowerCase().trim()
       const command = registeredCommands.get(cmd)
-      console.log(message.author.id)
 
       if (command == null) {
         message.channel.send(`Unknown command: \`${utils.sanitizeCode(cmd)}\``)
