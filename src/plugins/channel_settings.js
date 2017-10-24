@@ -13,15 +13,12 @@ export default function load(api) {
   }, async (bot, message, args) => {
     const granted = await permissions.checkPermission(message, constants.PERM_CHANNELS)
     if (granted) {
-
       try {
         await guildSettings.addCommandChannel(message.guild.id, message.channel.id)
         message.channel.send('Command channel successfully set')
       } catch (err) {
         message.channel.send('An error occured while trying to set the command channel')
-        return
       }
-
     } else {
       message.channel.send('You don\'t have permission to set the command channel')
     }
@@ -33,10 +30,9 @@ export default function load(api) {
   }, async (bot, message, args) => {
     const granted = await permissions.checkPermission(message, constants.PERM_CHANNELS)
     if (granted) {
-
       try {
         const registered = await guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
-        if (!registered) {
+        if (!registered) {
           message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
           return
         }
@@ -61,9 +57,7 @@ export default function load(api) {
         }
 
         message.channel.send('An error occured while trying to set the lobby voice channel')
-        return
       }
-
     } else {
       message.channel.send('You don\'t have permission to set the lobby voice channel')
     }
@@ -85,11 +79,11 @@ export default function load(api) {
 
       try {
         const registered = await guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
-        if (!registered) {
+        if (!registered) {
           message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
           return
         }
-      } catch (err) {
+      } catch (err) {
         message.channel.send(constants.MSG_ERR_LOOKUP_CMDCHANNEL)
         return
       }
@@ -115,9 +109,7 @@ export default function load(api) {
         }
 
         message.channel.send('An error occured while trying to set the lobby voice channel')
-        return
       }
-
     } else {
       message.channel.send('You don\'t have permission to set team voice channels')
     }
@@ -129,7 +121,6 @@ export default function load(api) {
   }, async (bot, message, args) => {
     const granted = await permissions.checkPermission(message, constants.PERM_CHANNELS)
     if (granted) {
-
       try {
         await guildSettings.removeCommandChannel(message.guild.id, message.channel.id)
         message.channel.send('Command channel successfully deleted')
@@ -140,9 +131,7 @@ export default function load(api) {
         }
 
         message.channel.send('An error occured while trying to delete the command channel')
-        return
       }
-
     } else {
       message.channel.send('You don\'t have permission to remove command channels')
     }

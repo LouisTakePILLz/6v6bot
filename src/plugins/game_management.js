@@ -1,8 +1,7 @@
 import * as constants from '~/constants'
 import * as errors from '~/errors'
 import * as utils from '~/utils'
-import gameRules from '~/gameRules'
-import { RichEmbed } from 'discord.js'
+import { RichEmbed } from 'discord.js'
 
 const MSG_NO_GAME_SESSION = 'No on-going game session, type `!setup` to initialize the game session'
 
@@ -12,9 +11,18 @@ function displayTeams(env, channel, textMessage) {
     return utils.sanitizeCode(entry)
   }
 
-  const getMemberList = (teamName) => {
-    return formatUserEntry(env.session.teams[teamName].leader) + '\u{1F451}\n'
-      + [...env.session.teams[teamName].members.values()].map(formatUserEntry).join('\n')
+  const getMemberList = (teamName) => { // eslint-disable-line arrow-body-style
+    let list = '*Empty*'
+    if (env.session.teams[teamName].leader != null) {
+      list = formatUserEntry(env.session.teams[teamName].leader) + '\u{1F451}'
+    }
+
+    const members = [...env.session.teams[teamName].members.values()]
+    if (members.length > 0) {
+      list += '\n' + members.map(formatUserEntry).join('\n')
+    }
+
+    return list
   }
 
   const embed = new RichEmbed()
@@ -28,14 +36,19 @@ function displayTeams(env, channel, textMessage) {
     .addField('__**Team 2**__', getMemberList('team2'), true)
 
   if (textMessage != null) {
-    channel.send(textMessage, {embed})
+    channel.send(textMessage, { embed })
   } else {
-    channel.send({embed})
+    channel.send({ embed })
   }
 }
 
 export default function load(api) {
-  const { registerCommand: register, permissions, guildSettings, gameSessions } = api
+  const {
+    registerCommand: register,
+    permissions,
+    guildSettings,
+    gameSessions,
+  } = api
 
   permissions.registerPermission(constants.PERM_ADMIN, 'Allows administrating game sessions')
   permissions.registerPermission(constants.PERM_SETUP, 'Allows setting up game sessions')
@@ -70,7 +83,6 @@ export default function load(api) {
 
     const granted = await permissions.checkPermission(message, constants.PERM_SETLEADER).or(constants.PERM_ADMIN)
     if (granted) {
-
       try {
         const registered = await guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
         if (!registered) {
@@ -92,7 +104,6 @@ export default function load(api) {
       let msg
 
       if (mention === 'random') {
-
         if (session.started) {
           message.channel.send('You can\'t reroll team leaders when the game session has already started')
           return
@@ -105,14 +116,14 @@ export default function load(api) {
         const memberPool = [...lobbyVoiceChannel.members.values()]
 
         const teamLeader = session.teams[teamName].leader
-        const teamLeaderIndex = memberPool.findIndex(x => x.id === teamLeader.id)
+        const teamLeaderIndex = memberPool.findIndex(x => x.id === teamLeader.id)
         if (teamLeaderIndex != null) {
           memberPool.splice(teamLeaderIndex, 1)
         }
 
         const enemyTeam = teamName === 'team1' ? 'team2' : 'team1'
         const enemyLeader = session.teams[enemyTeam].leader
-        const enemyLeaderIndex = memberPool.findIndex(x => x.id === enemyLeader.id)
+        const enemyLeaderIndex = memberPool.findIndex(x => x.id === enemyLeader.id)
         if (enemyLeaderIndex != null) {
           memberPool.splice(enemyLeaderIndex, 1)
         }
@@ -126,8 +137,7 @@ export default function load(api) {
 
         if (session.teams.team1.members.delete(randomMember.id)) {
           msg = `${targetMember} has been removed from ${constants.TEAM_NAMES.team1} and set as the team leader for ${constants.TEAM_NAMES[teamName]}`
-        }
-        else if (session.teams.team2.members.delete(randomMember.id)) {
+        } else if (session.teams.team2.members.delete(randomMember.id)) {
           msg = `${targetMember} has been removed from ${constants.TEAM_NAMES.team2} and set as the team leader for ${constants.TEAM_NAMES[teamName]}`
         }
 
@@ -148,8 +158,7 @@ export default function load(api) {
 
       session.teams[teamName].leader = targetMember
 
-      message.channel.send(msg || `${targetMember} has been set as the team leader for ${constants.TEAM_NAMES[teamName]}`)
-
+      message.channel.send(msg || `${targetMember} has been set as the team leader for ${constants.TEAM_NAMES[teamName]}`)
     } else {
       message.channel.send('You don\'t have permission to set team leaders')
     }
@@ -159,198 +168,186 @@ export default function load(api) {
     desc: 'Removes the target user from the team',
     perm: `Only works if used by a team leader. Team picks can be forced with the \`${constants.PERM_ADMIN}\` permission`,
     extra: '**unpick** <flake_id>'
-  }, (bot, message, args) => {
+  }, async (bot, message, args) => {
     const mention = args[0]
-    const teamName = args[1]
     const session = gameSessions.getGameSession(message.guild, message.channel)
 
-    permissions.checkPermission(message, constants.PERM_ADMIN)
-      .then((adminGranted) => {
+    if (!session.initialized) {
+      message.channel.send(MSG_NO_GAME_SESSION)
+      return
+    }
 
-        if (!session.initialized) {
-          message.channe.send(MSG_NO_GAME_SESSION)
-          return
-        }
+    const team1Leader = session.teams.team1.leader || {}
+    const team2Leader = session.teams.team2.leader || {}
 
-        const team1Leader = session.teams.team1.leader || {}
-        const team2Leader = session.teams.team2.leader || {}
+    const targetMember = utils.resolveMember(message.guild, mention)
 
-        const targetMember = utils.resolveMember(message.guild, mention)
+    if (targetMember == null) {
+      message.channel.send(constants.MSG_INVALID_TARGET_MEMBER)
+      return
+    }
 
-        if (targetMember == null) {
-          message.channel.send(constants.MSG_INVALID_TARGET_MEMBER)
-          return
-        }
+    let targetTeam
+    if (session.teams.team1.members.has(targetMember.id)) {
+      targetTeam = 'team1'
+    } else if (session.teams.team2.members.has(targetMember.id)) {
+      targetTeam = 'team2'
+    }
 
-        if (!adminGranted &&
-          (
-            targetTeam === 'team1' && message.member.id !== team1Leader.id ||
-            targetTeam === 'team2' && message.member.id !== team2Leader.id
-          )
-        ) {
-          message.channel.send(`Can't remove ${targetMember} from the team, as you are not the team leader`)
-          return
-        }
+    const adminGranted = await permissions.checkPermission(message, constants.PERM_ADMIN)
+    if (!adminGranted &&
+      (
+        (targetTeam === 'team1' && message.member.id !== team1Leader.id) ||
+        (targetTeam === 'team2' && message.member.id !== team2Leader.id)
+      )
+    ) {
+      message.channel.send(`Can't remove ${targetMember} from the team, as you are not the team leader`)
+      return
+    }
 
-        if (team1Leader.id === targetMember.id || team2Leader.id === targetMember.id) {
-          message.channel.send('You can\'t unpick a team leader')
-          return
-        }
+    if (targetTeam == null) {
+      message.channel.send(`${targetMember} is not on a team`)
+      return
+    }
 
-        let targetTeam
-        if (session.teams.team1.members.has(targetMember.id)) {
-          targetTeam = 'team1'
-        } else if (session.teams.team2.members.has(targetMember.id)) {
-          targetTeam = 'team2'
-        } else {
-          message.channel.send(`${targetMember} is not on a team`)
-          return
-        }
+    if (team1Leader.id === targetMember.id || team2Leader.id === targetMember.id) {
+      message.channel.send('You can\'t unpick a team leader')
+      return
+    }
 
-        session.removeFromTeam(targetTeam, targetMember)
-          .then(() => {
-            const msg = `${targetMember} was removed from ${constants.TEAM_NAMES[targetTeam]}\n`
-                      + `It's ${session.teams[session.getTurn()].leader}'s turn to pick`
+    try {
+      await session.removeFromTeam(targetTeam, targetMember)
+      const msg = `${targetMember} was removed from ${constants.TEAM_NAMES[targetTeam]}\n`
+                + `It's ${session.teams[session.getTurn()].leader}'s turn to pick`
 
-            message.channel.send(msg)
-          }, (err) => {
-            if (err instanceof errors.InvalidTeamMemberError) {
-              message.channel.send(`${targetMember} is not on a team`)
-              return
-            }
+      message.channel.send(msg)
+    } catch (err) {
+      if (err instanceof errors.InvalidTeamMemberError) {
+        message.channel.send(`${targetMember} is not on a team`)
+        return
+      }
 
-            console.log('unpick player ERROR', err)
-            message.channel.send('An error occured while trying to remove a user from a team')
-          })
-
-      })
+      console.log('unpick player ERROR', err)
+      message.channel.send('An error occured while trying to remove a user from a team')
+    }
   })
 
   register('pick', {
     desc: 'Adds the target user to the team',
     perm: `Only works if used by a team leader. Team picks can be forced with the \`${constants.PERM_ADMIN}\` permission`,
     extra: '**pick** <flake_id> [team1|team2]'
-  }, (bot, message, args) => {
+  }, async (bot, message, args) => {
     const mention = args[0]
     const teamName = args[1]
     const session = gameSessions.getGameSession(message.guild, message.channel)
 
-    permissions.checkPermission(message, constants.PERM_ADMIN)
-      .then((adminGranted) => {
+    if (!session.initialized) {
+      message.channel.send(MSG_NO_GAME_SESSION)
+      return
+    }
 
-        if (!session.initialized) {
-          message.channel.send(MSG_NO_GAME_SESSION)
+    const team1Leader = session.teams.team1.leader
+    const team2Leader = session.teams.team2.leader
+
+    if (teamName == null &&
+      (
+        (team1Leader != null && message.member.id !== team1Leader.id) &&
+        (team2Leader != null && message.member.id !== team2Leader.id)
+      )
+    ) {
+      message.channel.send('Can\'t add players to team, you are not the team leader')
+      return
+    }
+
+    if (team1Leader == null || team2Leader == null) {
+      message.channel.send('Both team leaders need to be set before picking')
+      return
+    }
+
+    const targetMember = utils.resolveMember(message.guild, mention)
+
+    if (targetMember == null) {
+      message.channel.send(constants.MSG_INVALID_TARGET_MEMBER)
+      return
+    }
+
+    const leaderTeamName = message.member.id === team1Leader.id ? 'team1' : 'team2'
+    const enemyTeamName = leaderTeamName === 'team1' ? 'team2' : 'team1'
+
+    if (teamName != null) {
+      // Forcefully pick user
+      const adminGranted = await permissions.checkPermission(message, constants.PERM_ADMIN)
+      if (adminGranted) {
+        if (constants.TEAM_NAMES[teamName] == null) {
+          message.channel.send(constants.MSG_INVALID_TEAM_NAME)
           return
         }
-
-        const team1Leader = session.teams.team1.leader
-        const team2Leader = session.teams.team2.leader
-
-        if (teamName == null &&
-          (
-            (team1Leader != null && message.member.id !== team1Leader.id) &&
-            (team2Leader != null && message.member.id !== team2Leader.id)
+        try {
+          await session.addToTeam(teamName, targetMember)
+          message.channel.send(
+            `${targetMember} was added to ${constants.TEAM_NAMES[teamName]}\n` +
+            `It's ${session.teams[session.getTurn()].leader}'s turn to pick`
           )
-        ) {
-          message.channel.send('Can\'t add players to team, you are not the team leader')
-          return
-        }
-
-        if (team1Leader == null || team2Leader == null) {
-          message.channel.send('Both team leaders need to be set before picking')
-          return
-        }
-
-        const targetMember = utils.resolveMember(message.guild, mention)
-
-        if (targetMember == null) {
-          message.channel.send(constants.MSG_INVALID_TARGET_MEMBER)
-          return
-        }
-
-        const leaderTeamName = message.member.id === team1Leader.id ? 'team1' : 'team2'
-        const enemyTeamName = leaderTeamName === 'team1' ? 'team2' : 'team1'
-
-        if (teamName != null) {
-          // Forcefully pick user
-
-          if (adminGranted) {
-            if (constants.TEAM_NAMES[teamName] == null) {
-              message.channel.send(constants.MSG_INVALID_TEAM_NAME)
-              return
-            }
-
-            session.addToTeam(teamName, targetMember)
-              .then(() => {
-                message.channel.send(`${targetMember} was added to ${constants.TEAM_NAMES[teamName]}`)
-              }, (err) => {
-                if (err instanceof errors.DuplicatePlayerError) {
-                  message.channel.send(`${targetMember} is already on a team`)
-                  return
-                }
-
-                console.log('pick player ERROR', err)
-                message.channel.send('An error occured while trying to add a user to a team')
-              })
-
-          } else {
-            message.channel.send('You don\'t have permission to force team picks')
-          }
-        } else {
-          // Pick user as team leader
-
-          const turnTeamName = session.getTurn()
-          if (turnTeamName !== leaderTeamName) {
-            message.channel.send(`It's currently ${session.teams[turnTeamName].leader}'s turn to pick`)
+        } catch (err) {
+          if (err instanceof errors.DuplicatePlayerError) {
+            message.channel.send(`${targetMember} is already on a team`)
             return
           }
 
-          session.addToTeam(leaderTeamName, targetMember)
-            .then(() => {
-              session.setLastTurn(leaderTeamName)
-
-              let msg = `${targetMember} was added to ${constants.TEAM_NAMES[leaderTeamName]}\n`
-              if (session.getTurn() === turnTeamName) {
-                msg += `It's still ${session.teams[leaderTeamName].leader}'s turn to pick`
-              } else {
-                msg += `It's now ${session.teams[enemyTeamName].leader}'s turn to pick`
-              }
-
-              message.channel.send(msg)
-            }, (err) => {
-              if (err instanceof errors.DuplicatePlayerError) {
-                message.channel.send(`${targetMember} is already on a team`)
-                return
-              }
-
-              console.log('force pick player ERROR', err)
-              message.channel.send('An error occured while trying to add a user to a team')
-            })
+          console.log('pick player ERROR', err)
+          message.channel.send('An error occured while trying to add a user to a team')
         }
-      })
+      } else {
+        message.channel.send('You don\'t have permission to force team picks')
+      }
+    } else {
+      // Pick user as team leader
+      const turnTeamName = session.getTurn()
+      if (turnTeamName !== leaderTeamName) {
+        message.channel.send(`It's currently ${session.teams[turnTeamName].leader}'s turn to pick`)
+        return
+      }
+
+      try {
+        await session.addToTeam(leaderTeamName, targetMember)
+        session.setLastTurn(leaderTeamName)
+
+        let msg = `${targetMember} was added to ${constants.TEAM_NAMES[leaderTeamName]}\n`
+        if (session.getTurn() === turnTeamName) {
+          msg += `It's still ${session.teams[leaderTeamName].leader}'s turn to pick`
+        } else {
+          msg += `It's ${session.teams[enemyTeamName].leader}'s turn to pick`
+        }
+
+        message.channel.send(msg)
+      } catch (err) {
+        if (err instanceof errors.DuplicatePlayerError) {
+          message.channel.send(`${targetMember} is already on a team`)
+          return
+        }
+
+        console.log('force pick player ERROR', err)
+        message.channel.send('An error occured while trying to add a user to a team')
+      }
+    }
   })
 
   register('teams', {
     desc: 'Displays the teams and their members'
-  }, (bot, message, args) => {
+  }, async (bot, message, args) => {
+    const registered = await guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
+    if (!registered) {
+      message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
+      return
+    }
 
-    guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
-      .then((registered) => {
+    const session = gameSessions.getGameSession(message.guild, message.channel)
+    if (!session.initialized) {
+      message.channel.send(MSG_NO_GAME_SESSION)
+      return
+    }
 
-        if (!registered) {
-          message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
-          return
-        }
-
-        const session = gameSessions.getGameSession(message.guild, message.channel)
-        if (!session.initialized) {
-          message.channel.send(MSG_NO_GAME_SESSION)
-          return
-        }
-
-        displayTeams({session}, message.channel)
-
-      })
+    displayTeams({ session }, message.channel)
   })
 
   register('start', {
@@ -360,7 +357,6 @@ export default function load(api) {
     const granted = await permissions.checkPermission(message, constants.PERM_SETUP).or(constants.PERM_ADMIN)
 
     if (granted) {
-
       try {
         const registered = await guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
         if (!registered) {
@@ -387,7 +383,7 @@ export default function load(api) {
       try {
         await session.start()
 
-        displayTeams({session}, message.channel, 'Game session started!\n')
+        displayTeams({ session }, message.channel, 'Game session started!\n')
       } catch (err) {
         console.log('start game session ERROR', err)
 
@@ -403,9 +399,8 @@ export default function load(api) {
 
         message.channel.send('An error occured while trying to start the game session')
       }
-
     } else {
-      message.channel.send('You don\'t have permission to start the 6v6 session')
+      message.channel.send('You don\'t have permission to start the game session')
     }
   })
 
@@ -414,9 +409,7 @@ export default function load(api) {
     perm: `Requires \`${constants.PERM_SETUP}\` or \`${constants.PERM_ADMIN}\``
   }, async (bot, message, args) => {
     const granted = await permissions.checkPermission(message, constants.PERM_SETUP).or(constants.PERM_ADMIN)
-
     if (granted) {
-
       try {
         const registered = await guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
         if (!registered) {
@@ -439,22 +432,20 @@ export default function load(api) {
         await session.end()
         message.channel.send('The game session has been terminated')
       } catch (err) {
-       console.log('end game session ERROR', err)
+        console.log('end game session ERROR', err)
 
-       if (err instanceof errors.ChannelConfigurationError) {
-         message.channel.send(`Invalid configuration; the \`${err.channel}\` channel isn't set`)
-         return
-       }
+        if (err instanceof errors.ChannelConfigurationError) {
+          message.channel.send(`Invalid configuration; the \`${err.channel}\` channel isn't set`)
+          return
+        }
 
-       if (err instanceof errors.MissingMovePermissionError) {
-         message.channel.send('An error occured while trying to move users to the lobby voice channel; does the bot have voice channel permissions?')
-         return
-       }
+        if (err instanceof errors.MissingMovePermissionError) {
+          message.channel.send('An error occured while trying to move users to the lobby voice channel; does the bot have voice channel permissions?')
+          return
+        }
 
-       message.channel.send('An error occured while trying to terminate the game session')
-     }
-
-
+        message.channel.send('An error occured while trying to terminate the game session')
+      }
     } else {
       message.channel.send('You don\'t have permission to terminate the game session')
     }
@@ -463,58 +454,54 @@ export default function load(api) {
   register('setup', {
     desc: 'Initializes (or resets) the game session',
     perm: `Requires \`${constants.PERM_SETUP}\` or \`${constants.PERM_ADMIN}\``
-  }, (bot, message, args) => {
-    permissions.checkPermission(message, constants.PERM_SETUP).or(constants.PERM_ADMIN)
-      .then((granted) => {
-        if (granted) {
-
-          guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
-            .then((registered) => {
-
-              if (!registered) {
-                message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
-                return
-              }
-
-              const session = gameSessions.getGameSession(message.guild, message.channel)
-
-              if (session.started) {
-                message.channel.send('Game session already started, type `!end` to stop')
-                return
-              }
-
-              session.setup()
-                .then(() => {
-                  let msg = 'Game session initialized!'
-
-                  if (session.gameRules.isEnabled('randomLeaders')) {
-                    msg += `\n${session.teams.team1.leader} was randomly chosen as leader for ${constants.TEAM_NAMES.team1}`
-                         + `\n${session.teams.team2.leader} was randomly chosen as leader for ${constants.TEAM_NAMES.team2}`
-                         + `\n\n${session.teams[session.getTurn()].leader} gets to pick first`
-                  }
-
-                  message.channel.send(msg)
-                }, (err) => {
-                  if (err instanceof errors.NotEnoughPlayersError) {
-                    message.channel.send(err.errMsg)
-                    return
-                  }
-
-                  if (err instanceof errors.ChannelConfigurationError) {
-                    message.channel.send(`Invalid configuration; the \`${err.channel}\` channel isn't set`)
-                    return
-                  }
-
-                  console.log('setup game ERROR', err)
-                  message.channel.send('An error occured while trying to setup the game session')
-                })
-            }, (err) => {
-              message.channel.send(constants.MSG_ERR_LOOKUP_CMDCHANNEL)
-            })
-
-        } else {
-          message.channel.send('You don\'t have permission to setup a game session')
+  }, async (bot, message, args) => {
+    const granted = await permissions.checkPermission(message, constants.PERM_SETUP).or(constants.PERM_ADMIN)
+    if (granted) {
+      try {
+        const registered = await guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
+        if (!registered) {
+          message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
+          return
         }
-      })
+      } catch (err) {
+        message.channel.send(constants.MSG_ERR_LOOKUP_CMDCHANNEL)
+        return
+      }
+
+      const session = gameSessions.getGameSession(message.guild, message.channel)
+
+      if (session.started) {
+        message.channel.send('Game session already started, type `!end` to stop')
+        return
+      }
+
+      try {
+        await session.setup()
+        let msg = 'Game session initialized!'
+
+        if (session.gameRules.isEnabled('randomLeaders')) {
+          msg += `\n${session.teams.team1.leader} was randomly chosen as leader for ${constants.TEAM_NAMES.team1}`
+               + `\n${session.teams.team2.leader} was randomly chosen as leader for ${constants.TEAM_NAMES.team2}`
+               + `\n\n${session.teams[session.getTurn()].leader} gets to pick first`
+        }
+
+        message.channel.send(msg)
+      } catch (err) {
+        if (err instanceof errors.NotEnoughPlayersError) {
+          message.channel.send(err.errMsg)
+          return
+        }
+
+        if (err instanceof errors.ChannelConfigurationError) {
+          message.channel.send(`Invalid configuration; the \`${err.channel}\` channel isn't set`)
+          return
+        }
+
+        console.log('setup game ERROR', err)
+        message.channel.send('An error occured while trying to setup the game session')
+      }
+    } else {
+      message.channel.send('You don\'t have permission to setup a game session')
+    }
   })
 }

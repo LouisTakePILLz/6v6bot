@@ -1,14 +1,14 @@
 import * as constants from '~/constants'
 import * as errors from '~/errors'
 
-const GuildSettingsManager = (env) => class GuildSettingsManager {
+const GuildSettingsManagerWrapper = (env) => class GuildSettingsManager {
   addCommandChannel(guildId, channelId) {
     return new Promise((resolve, reject) => {
       const query = { guildId, setting: 'commandChannels' }
 
       env.db.collection('guilds')
         .update(query, { $addToSet: { values: channelId } }, { upsert: true })
-        .then(({result}) => {
+        .then(({ result }) => {
           const didInsertChannel = result.nModified !== 0
           resolve(didInsertChannel)
         }, (err) => {
@@ -25,7 +25,7 @@ const GuildSettingsManager = (env) => class GuildSettingsManager {
 
       env.db.collection('guilds')
         .update(query, { $pull: { values: cmdChannelId } })
-        .then(({result}) => {
+        .then(({ result }) => {
           if (result.nModified === 0) {
             reject(new errors.CommandChannelNotRegisteredError())
             return
@@ -44,7 +44,7 @@ const GuildSettingsManager = (env) => class GuildSettingsManager {
               //reject(false)
               resolve()
             })
-        }, /* onError*/ (err) => {
+        }, (err) => {
           console.log('removeCommandChannel DB ERROR 1', err)
           reject()
         })
@@ -54,7 +54,7 @@ const GuildSettingsManager = (env) => class GuildSettingsManager {
   getCommandChannels(guildId) {
     // TODO: add caching
     return new Promise((resolve, reject) => {
-      const query = { guildId: guildId, setting: 'commandChannels' }
+      const query = { guildId, setting: 'commandChannels' }
 
       env.db.collection('guilds')
         .findOne(query)
@@ -72,7 +72,7 @@ const GuildSettingsManager = (env) => class GuildSettingsManager {
   isCommandChannelRegistered(guildId, channelId) {
     // TODO: add caching
     return new Promise((resolve, reject) => {
-      const query = { guildId: guildId, setting: 'commandChannels', values: { $all: [channelId] } }
+      const query = { guildId, setting: 'commandChannels', values: { $all: [channelId] } }
 
       env.db.collection('guilds')
         .findOne(query)
@@ -100,7 +100,7 @@ const GuildSettingsManager = (env) => class GuildSettingsManager {
 
           env.db.collection('guilds')
             .update(lobbyChannelQuery, { $set: { value: voiceChannelId } }, { upsert: true })
-            .then(({result}) => {
+            .then(({ result }) => {
               resolve()
             }, (err) => {
               console.log('setLobbyVoiceChannel DB ERROR 2', err)
@@ -130,7 +130,7 @@ const GuildSettingsManager = (env) => class GuildSettingsManager {
 
           env.db.collection('guilds')
             .update(voiceChannelQuery, { $set: { value: voiceChannelId } }, { upsert: true })
-            .then(({result}) => {
+            .then(({ result }) => {
               resolve()
             }, (err) => {
               console.log('setTeamVoiceChannel DB ERROR 2', err)
@@ -146,11 +146,11 @@ const GuildSettingsManager = (env) => class GuildSettingsManager {
   async getVoiceChannelId(guildId, cmdChannelId, channelSetting) {
     let settingQuery
 
-    if (channelSetting == 'lobby') {
+    if (channelSetting === 'lobby') {
       settingQuery = { setting: 'lobbyChannel' }
-    } else if (channelSetting == 'team1') {
+    } else if (channelSetting === 'team1') {
       settingQuery = { setting: 'voiceChannel', teamName: 'team1' }
-    } else if (channelSetting == 'team2') {
+    } else if (channelSetting === 'team2') {
       settingQuery = { setting: 'voiceChannel', teamName: 'team2' }
     } else {
       throw new Error('Invalid channel setting')
@@ -179,7 +179,6 @@ const GuildSettingsManager = (env) => class GuildSettingsManager {
   }
 
   // TODO: getCommandChannelByChannelSetting(guildId, channelSetting, channelId) {}
-
 }
 
-export default GuildSettingsManager
+export default GuildSettingsManagerWrapper

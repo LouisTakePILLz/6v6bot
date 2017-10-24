@@ -8,6 +8,7 @@
     "bulk-require": "^1.0.1",
     "discord.js": "^11.2.1",
     "dotenv": "^4.0.0",
+    "eslint": "^4.9.0",
     "load-json-file": "^3.0.0",
     "minimist": "^1.2.0",
     "moment": "^2.19.1",
@@ -21,7 +22,10 @@
     "babel-plugin-require-root-rewrite": "^1.0.1",
     "babel-plugin-transform-builtin-extend": "^1.1.2",
     "babel-preset-env": "^1.6.0",
-    "babel-preset-stage-0": "^6.5.0"
+    "babel-preset-stage-0": "^6.5.0",
+    "eslint": "^4.9.0",
+    "eslint-config-airbnb-base": "^12.1.0",
+    "eslint-plugin-import": "^2.8.0"
   },
   "scripts": {
     "dev": "babel-node src",

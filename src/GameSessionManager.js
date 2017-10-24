@@ -1,6 +1,6 @@
 import GameSession from '~/GameSession'
 
-const GameSessionManager = (env) => class GameSessionManager {
+const GameSessionManagerWrapper = (env) => class GameSessionManager {
   constructor() {
     // Map<GuildId, Map<TextChannelId, GameSession>>
     this.serverSessions = new Map()
@@ -35,4 +35,4 @@ const GameSessionManager = (env) => class GameSessionManager {
 
 }
 
-export default GameSessionManager
+export default GameSessionManagerWrapper

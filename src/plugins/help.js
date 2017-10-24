@@ -5,7 +5,7 @@ const COMMANDS_PER_PAGE = 5
 
 export default function load({registerCommand: register, getCommands}) {
   register('help', {
-    desc: 'Displays the available commands and their purpose. If a command name is specified, specific help information will be displayed',
+    desc: 'Displays the available commands and their purpose. If a command name is specified, specific help information will be displayed: `help <cmd>`',
     adv: 'Displays the available commands and their purpose.\n...what else did you expect?',
     extra: '**help** [<page>]\n**help** <command>'
   }, (bot, message, args) => {

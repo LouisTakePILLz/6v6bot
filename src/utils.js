@@ -1,6 +1,6 @@
 export function sanitizeCode(input) {
   if (typeof input !== 'string') {
-    return
+    return null
   }
 
   return input.replace(/`/g, '\'')
@@ -15,11 +15,11 @@ export function isPositiveInteger(input) {
 }
 
 export function stringToBoolean(input) {
-  if (value.equalsIgnoreCase('true') || value === '1') {
+  if (input.equalsIgnoreCase('true') || input === '1') {
     return true
   }
 
-  if (value.equalsIgnoreCase('false') || value === '0') {
+  if (input.equalsIgnoreCase('false') || input === '0') {
     return false
   }
 
@@ -28,7 +28,7 @@ export function stringToBoolean(input) {
 
 export function resolveVoiceChannel(guild, voiceChannelId) {
   if (voiceChannelId == null) {
-    return
+    return null
   }
 
   const voiceChannel = guild.channels.get(voiceChannelId)
@@ -41,7 +41,7 @@ export function resolveVoiceChannel(guild, voiceChannelId) {
 
 export function getUserVoiceChannel(bot, guild, user) {
   return guild.channels.find((channel) => {
-    if (channel.type === 'voice' && channel.members.find((member) => member.id === user.id) != null) {
+    if (channel.type === 'voice' && channel.members.find(x => x.id === user.id) != null) {
       return true
     }
 
@@ -49,13 +49,13 @@ export function getUserVoiceChannel(bot, guild, user) {
   })
 }
 
-export function extractMentionId(mention) {
+export function extractMentionId(mention) {
   const mentionPattern = /<@!?(\d+)>/g
   const matches = mentionPattern.exec(mention)
   if (matches == null) {
     return null
   }
-  const [,memberId] = matches
+  const [, memberId] = matches
   return memberId
 }
 

@@ -33,7 +33,7 @@ export default function(db, bot) {
           for (const [, role] of guild.roles) {
             const permissionsArray =
               (docs.filter(doc => doc.roleId === role.id) || [])
-              .map(doc => doc.node)
+                .map(doc => doc.node)
             cache.roles.set(role.id, new Set(permissionsArray))
           }
 
@@ -227,7 +227,7 @@ export default function(db, bot) {
   }
 
   permissionsApi.registerPermission = (node, helpText) => {
-    permissions.set(node, {node, helpText})
+    permissions.set(node, { node, helpText })
     return Promise.resolve(true)
   }
 

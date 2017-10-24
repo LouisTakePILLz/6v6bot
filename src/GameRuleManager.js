@@ -2,7 +2,7 @@ import * as errors from '~/errors'
 import * as utils from '~/utils'
 import defaultRuleSet from '~/gameRules'
 
-const GameRuleManager = (env) => class GameRuleManager {
+const GameRuleManagerWrapper = (env) => class GameRuleManager {
   constructor() {
     this.rules = new Map()
   }
@@ -14,7 +14,6 @@ const GameRuleManager = (env) => class GameRuleManager {
   isEnabled(ruleName) {
     const ruleNode = this.getRule(ruleName)
     if (ruleNode == null) {
-
       if (defaultRuleSet[ruleName] == null) {
         return false
       }
@@ -32,8 +31,12 @@ const GameRuleManager = (env) => class GameRuleManager {
       if (boolValue == null) {
         throw new errors.InvalidGameRuleValue(boolValue)
       }
+
+      // TODO: store values
     }
+
+    // TODO: add more value types
   }
 }
 
-export default GameRuleManager
+export default GameRuleManagerWrapper
