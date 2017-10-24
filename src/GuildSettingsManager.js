@@ -178,6 +178,8 @@ const GuildSettingsManager = (env) => class GuildSettingsManager {
     return doc.value
   }
 
+  // TODO: getCommandChannelByChannelSetting(guildId, channelSetting, channelId) {}
+
 }
 
 export default GuildSettingsManager

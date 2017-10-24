@@ -2,29 +2,9 @@ import * as constants from '~/constants'
 import * as errors from '~/errors'
 import * as utils from '~/utils'
 import gameRules from '~/gameRules'
-import GameSession from '~/GameSession'
 import { RichEmbed } from 'discord.js'
 
 const MSG_NO_GAME_SESSION = 'No on-going game session, type `!setup` to initialize the game session'
-
-// Map<ServerId, Map<TextChannelId, GameSession>>
-const serverSessions = new Map()
-
-function getGameSession(env, guild, channel) {
-  let sessions = serverSessions.get(guild.id)
-  if (sessions == null) {
-    sessions = new Map()
-    serverSessions.set(guild.id, sessions)
-  }
-
-  let session = sessions.get(channel.id)
-  if (session == null) {
-    session = new (GameSession(env))(guild, channel)
-    sessions.set(channel.id, session)
-  }
-
-  return session
-}
 
 function displayTeams(env, channel, textMessage) {
   const formatUserEntry = (member) => {
@@ -55,11 +35,16 @@ function displayTeams(env, channel, textMessage) {
 }
 
 export default function load(api) {
-  const { registerCommand: register, permissions, guildSettings } = api
+  const { registerCommand: register, permissions, guildSettings, gameSessions } = api
 
   permissions.registerPermission(constants.PERM_ADMIN, 'Allows administrating game sessions')
   permissions.registerPermission(constants.PERM_SETUP, 'Allows setting up game sessions')
   permissions.registerPermission(constants.PERM_SETLEADER, 'Allows setting team leaders')
+
+  /*api.bot.on('voiceStateUpdate', (oldMember, newMember) => {
+    // TODO: automatically move new players to their team channels
+    gameSessions.getGameSessionByLobby(newMember.voiceChannel)
+  })*/
 
   register('gamerule', {
     desc: 'Manages game rules',
@@ -86,13 +71,18 @@ export default function load(api) {
     const granted = await permissions.checkPermission(message, constants.PERM_SETLEADER).or(constants.PERM_ADMIN)
     if (granted) {
 
-      const registered = await guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
-      if (!registered) {
-        message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
+      try {
+        const registered = await guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
+        if (!registered) {
+          message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
+          return
+        }
+      } catch (err) {
+        message.channel.send(constants.MSG_ERR_LOOKUP_CMDCHANNEL)
         return
       }
 
-      const session = getGameSession({bot, api}, message.guild, message.channel)
+      const session = gameSessions.getGameSession(message.guild, message.channel)
       if (!session.initialized) {
         message.channel.send(MSG_NO_GAME_SESSION)
         return
@@ -110,7 +100,7 @@ export default function load(api) {
 
         const lobbyVoiceChannel = utils.resolveVoiceChannel(
           message.guild,
-          await api.guildSettings.getVoiceChannelId(message.guild.id, message.channel.id, 'lobby')
+          await guildSettings.getVoiceChannelId(message.guild.id, message.channel.id, 'lobby')
         )
         const memberPool = [...lobbyVoiceChannel.members.values()]
 
@@ -172,7 +162,7 @@ export default function load(api) {
   }, (bot, message, args) => {
     const mention = args[0]
     const teamName = args[1]
-    const session = getGameSession({bot, api}, message.guild, message.channel)
+    const session = gameSessions.getGameSession(message.guild, message.channel)
 
     permissions.checkPermission(message, constants.PERM_ADMIN)
       .then((adminGranted) => {
@@ -243,7 +233,7 @@ export default function load(api) {
   }, (bot, message, args) => {
     const mention = args[0]
     const teamName = args[1]
-    const session = getGameSession({bot, api}, message.guild, message.channel)
+    const session = gameSessions.getGameSession(message.guild, message.channel)
 
     permissions.checkPermission(message, constants.PERM_ADMIN)
       .then((adminGranted) => {
@@ -352,7 +342,7 @@ export default function load(api) {
           return
         }
 
-        const session = getGameSession({bot, api}, message.guild, message.channel)
+        const session = gameSessions.getGameSession(message.guild, message.channel)
         if (!session.initialized) {
           message.channel.send(MSG_NO_GAME_SESSION)
           return
@@ -367,10 +357,10 @@ export default function load(api) {
     desc: 'Starts the game session',
     perm: `Requires \`${constants.PERM_SETUP}\` or \`${constants.PERM_ADMIN}\``
   }, async (bot, message, args) => {
-
     const granted = await permissions.checkPermission(message, constants.PERM_SETUP).or(constants.PERM_ADMIN)
 
     if (granted) {
+
       try {
         const registered = await guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
         if (!registered) {
@@ -379,9 +369,10 @@ export default function load(api) {
         }
       } catch (err) {
         message.channel.send(constants.MSG_ERR_LOOKUP_CMDCHANNEL)
+        return
       }
 
-      const session = getGameSession({bot, api}, message.guild, message.channel)
+      const session = gameSessions.getGameSession(message.guild, message.channel)
 
       if (!session.initialized) {
         message.channel.send(MSG_NO_GAME_SESSION)
@@ -434,9 +425,10 @@ export default function load(api) {
         }
       } catch (err) {
         message.channel.send(constants.MSG_ERR_LOOKUP_CMDCHANNEL)
+        return
       }
 
-      const session = getGameSession({bot, api}, message.guild, message.channel)
+      const session = gameSessions.getGameSession(message.guild, message.channel)
 
       if (!session.initialized) {
         message.channel.send(MSG_NO_GAME_SESSION)
@@ -484,7 +476,7 @@ export default function load(api) {
                 return
               }
 
-              const session = getGameSession({bot, api}, message.guild, message.channel)
+              const session = gameSessions.getGameSession(message.guild, message.channel)
 
               if (session.started) {
                 message.channel.send('Game session already started, type `!end` to stop')

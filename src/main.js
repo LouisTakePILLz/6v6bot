@@ -9,6 +9,7 @@ import * as utils from '~/utils'
 import options from '~/options'
 import PermissionManager from '~/PermissionManager'
 import GuildSettingsManager from '~/GuildSettingsManager'
+import GameSessionManager from '~/GameSessionManager'
 
 require('dotenv').config()
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN
@@ -45,12 +46,14 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
   // TODO: turn PermissionManager into ES6 class
   const permissions = PermissionManager(db, bot)
   const guildSettings = new (GuildSettingsManager({db, bot}))()
+  const gameSessions = new (GameSessionManager({db, bot, guildSettings}))
 
   const PluginAPI = {
     db,
     bot,
     permissions,
     guildSettings,
+    gameSessions,
     options,
     getCommands() {
       return registeredCommands
