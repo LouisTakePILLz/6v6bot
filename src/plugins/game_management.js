@@ -26,6 +26,30 @@ function getGameSession(env, guild, channel) {
   return session
 }
 
+function displayTeams(env, channel) {
+  const formatUserEntry = (member) => {
+    const entry = `**${member.displayName}**`
+    return utils.sanitizeCode(entry)
+  }
+
+  const getMemberList = (teamName) => {
+    return formatUserEntry(env.session.teams[teamName].leader) + '\u{1F451}\n'
+      + [...env.session.teams[teamName].members.values()].map(formatUserEntry).join('\n')
+  }
+
+  const embed = new RichEmbed()
+    // TODO: customizable team names?
+    .setTitle('__6v6 Session - Team 1 vs. Team 2__')
+    .setDescription('Drafted Teams')
+    .setColor(0xA94AE8)
+    .setTimestamp()
+    .setFooter('6v6 draft', 'https://cdn.discordapp.com/embed/avatars/0.png')
+    .addField('__**Team 1**__', getMemberList('team1'), true)
+    .addField('__**Team 2**__', getMemberList('team2'), true)
+
+  channel.send({embed})
+}
+
 export default function load(api) {
   const { registerCommand: register, permissions, guildSettings } = api
 
@@ -278,27 +302,7 @@ export default function load(api) {
           return
         }
 
-        const formatUserEntry = (member) => {
-          const entry = `**${member.displayName}**`
-          return utils.sanitizeCode(entry)
-        }
-
-        const getMemberList = (teamName) => {
-          return formatUserEntry(session.teams[teamName].leader) + '\u{1F451}\n'
-                + [...session.teams[teamName].members.values()].map(formatUserEntry).join('\n')
-        }
-
-        const embed = new RichEmbed()
-          // TODO: customizable team names?
-          .setTitle('__6v6 Session - Team 1 vs. Team 2__')
-          .setDescription('Drafted Teams')
-          .setColor(0xA94AE8)
-          .setTimestamp()
-          .setFooter('6v6 draft', 'https://cdn.discordapp.com/embed/avatars/0.png')
-          .addField('__**Team 1**__', getMemberList('team1'), true)
-          .addField('__**Team 2**__', getMemberList('team2'), true)
-
-        message.channel.send({embed})
+        displayTeams({session}, message.channel)
 
       })
   })
@@ -336,13 +340,18 @@ export default function load(api) {
 
       try {
         await session.start()
+
+        displayTeams({session}, message.channel)
+
         message.channel.send('Game session started!')
       } catch (err) {
         console.log('start game session ERROR', err)
+
         if (err instanceof errors.ChannelConfigurationError) {
           message.channel.send(`Invalid configuration; the \`${err.channel}\` channel isn't set`)
           return
         }
+
         if (err instanceof errors.MissingMovePermissionError) {
           message.channel.send('An error occured while trying to move users to the voice channels; does the bot have voice channel permissions?')
           return

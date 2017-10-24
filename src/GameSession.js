@@ -130,20 +130,32 @@ const GameSession = (env) => class GameSession {
       await env.api.guildSettings.getVoiceChannel(this.guild.id, this.cmdChannel.id, 'team2')
     )
 
+    const forceVoice = this.gameRules.isEnabled('forceVoice')
+
+    const moveToVoiceChannel = async (member, voiceChannel) => {
+      if (forceVoice || member.voiceChannelID === lobbyVoiceChannel.id) {
+        await member.setVoiceChannel(voiceChannel)
+      }
+    }
+
+    // Move Team 1
+
     if (this.teams.team1.leader != null) {
-      await this.teams.team1.leader.setVoiceChannel(team1VoiceChannel)
+      await moveToVoiceChannel(this.teams.team1.leader, team1VoiceChannel)
     }
 
     for (const [,member] of this.teams.team1.members) {
-      await member.setVoiceChannel(team1VoiceChannel)
+      await moveToVoiceChannel(member, team1VoiceChannel)
     }
 
+    // Move Team 2
+
     if (this.teams.team2.leader != null) {
-      await this.teams.team2.leader.setVoiceChannel(team2VoiceChannel)
+      await moveToVoiceChannel(this.teams.team2.leader, team2VoiceChannel)
     }
 
     for (const [,member] of this.teams.team2.members) {
-      await member.setVoiceChannel(team2VoiceChannel)
+      await moveToVoiceChannel(member, team2VoiceChannel)
     }
   }
 
