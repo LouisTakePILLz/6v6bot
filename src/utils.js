@@ -62,3 +62,7 @@ export function extractMentionId(mention) {
 export function resolveMember(guild, mention) {
   return guild.members.get(extractMentionId(mention) || mention)
 }
+
+export function resolveTargetId(mention) {
+  return extractMentionId(mention) || mention
+}

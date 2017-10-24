@@ -365,9 +365,8 @@ export default function load(api) {
     perm: `Requires \`${constants.PERM_PERMISSIONS}\``,
     extra: `**perm** <action>
 **perm list** [<page>]
-**perm grant|revoke role|user** <permission_node>
+**perm grant|revoke role|user** <flake_id> <permission_node>
 **perm clear role|user** <flake_id>
-**perm show** <permission_node>
 **perm show user|role** <flake_id> [<page>]`
   }, async (bot, message, args) => {
     const granted = await permissions.checkPermission(message, constants.PERM_PERMISSIONS)
@@ -404,33 +403,33 @@ export default function load(api) {
         message.channel.send({ embed })
       } else if (action === 'grant') {
         if (args[1] === 'user') {
-          grantUserPermission(env, message, args[2], args[3])
+          grantUserPermission(env, message, utils.resolveTargetId(args[2]), args[3])
         } else if (args[1] === 'role') {
-          grantRolePermission(env, message, args[2], args[3])
+          grantRolePermission(env, message, utils.resolveTargetId(args[2]), args[3])
         } else {
           message.channel.send(MSG_INVALID_TARGET_NAME)
         }
       } else if (action === 'revoke') {
         if (args[1] === 'user') {
-          revokeUserPermission(env, message, args[2], args[3])
+          revokeUserPermission(env, message, utils.resolveTargetId(args[2]), args[3])
         } else if (args[1] === 'role') {
-          revokeRolePermission(env, message, args[2], args[3])
+          revokeRolePermission(env, message, utils.resolveTargetId(args[2]), args[3])
         } else {
           message.channel.send(MSG_INVALID_TARGET_NAME)
         }
       } else if (action === 'clear') {
         if (args[1] === 'user') {
-          clearUserPermissions(env, message, args[2])
+          clearUserPermissions(env, message, utils.resolveTargetId(args[2]))
         } else if (args[1] === 'role') {
-          clearRolePermissions(env, message, args[2])
+          clearRolePermissions(env, message, utils.resolveTargetId(args[2]))
         } else {
           message.channel.send(MSG_INVALID_TARGET_NAME)
         }
       } else if (action === 'show') {
         if (args[1] === 'user') {
-          showUserPermissions(env, message, args[2])
+          showUserPermissions(env, message, utils.resolveTargetId(args[2]))
         } else if (args[1] === 'role') {
-          showRolePermissions(env, message, args[2])
+          showRolePermissions(env, message, utils.resolveTargetId(args[2]))
         } else {
           message.channel.send(MSG_INVALID_TARGET_NAME)
         }
