@@ -11,7 +11,7 @@ function displayTeams(env, channel, textMessage) {
     return utils.sanitizeCode(entry)
   }
 
-  const getMemberList = (teamName) => { // eslint-disable-line arrow-body-style
+  const getMemberList = (teamName) => {
     let list = '*Empty*'
     if (env.session.teams[teamName].leader != null) {
       list = formatUserEntry(env.session.teams[teamName].leader) + '\u{1F451}'
@@ -66,7 +66,7 @@ export default function load(api) {
     permissions.checkPermission(message, constants.PERM_GAMERULE).or(constants.PERM_ADMIN)
       .then((granted) => {
         if (granted) {
-
+          // TODO
         } else {
           message.channel.send('You don\'t have permission to change the game rules')
         }

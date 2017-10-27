@@ -3,7 +3,7 @@ import * as errors from '~/errors'
 import * as utils from '~/utils'
 import GameRuleManager from '~/GameRuleManager'
 
-const GameSessionWrapper = (env) => class GameSession {
+const GameSessionWrapper = env => class GameSession {
   constructor(guild, cmdChannel) {
     this.guild = guild
     this.cmdChannel = cmdChannel

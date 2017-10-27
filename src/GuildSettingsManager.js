@@ -1,7 +1,7 @@
 import * as constants from '~/constants'
 import * as errors from '~/errors'
 
-const GuildSettingsManagerWrapper = (env) => class GuildSettingsManager {
+const GuildSettingsManagerWrapper = env => class GuildSettingsManager {
   addCommandChannel(guildId, channelId) {
     return new Promise((resolve, reject) => {
       const query = { guildId, setting: 'commandChannels' }
@@ -31,7 +31,11 @@ const GuildSettingsManagerWrapper = (env) => class GuildSettingsManager {
             return
           }
 
-          const query = { guildId, cmdChannelId, setting: { $in: ['lobbyChannel', 'voiceChannel'] } }
+          const query = {
+            guildId,
+            cmdChannelId,
+            setting: { $in: ['lobbyChannel', 'voiceChannel'] }
+          }
 
           env.db.collection('guilds')
             .deleteMany(query)
@@ -126,7 +130,12 @@ const GuildSettingsManagerWrapper = (env) => class GuildSettingsManager {
             reject(new errors.InvalidTeamNameError(teamName))
           }
 
-          const voiceChannelQuery = { guildId, cmdChannelId, setting: 'voiceChannel', teamName }
+          const voiceChannelQuery = {
+            guildId,
+            cmdChannelId,
+            setting: 'voiceChannel',
+            teamName
+          }
 
           env.db.collection('guilds')
             .update(voiceChannelQuery, { $set: { value: voiceChannelId } }, { upsert: true })

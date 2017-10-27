@@ -3,7 +3,13 @@
         "es6": true,
         "node": true
     },
-    "extends": "airbnb-base",
+    "extends": [
+        "airbnb-base",
+        "plugin:flowtype/recommended"
+    ],
+    "plugins": [
+        "flowtype"
+    ],
     "parserOptions": {
         "sourceType": "module"
     },
@@ -35,7 +41,23 @@
                 "allowAfterSuper": true
             }
         ],
+        "spaced-comment": [
+          1,
+          "always"
+        ],
+        "no-shadow": 0,
+        "no-unused-vars": 1,
+        "prefer-template": 0,
+        "function-paren-newline": 0,
+        "no-plusplus": [
+            2,
+            {
+                "allowForLoopAfterthoughts": true
+            }
+        ],
         "max-len": 0,
+        "no-console": 0,
+        "class-methods-use-this": 0,
         "import/no-unresolved": 0,
         "import/extensions": 0
     }

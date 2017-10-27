@@ -1,6 +1,6 @@
 import GameSession from '~/GameSession'
 
-const GameSessionManagerWrapper = (env) => class GameSessionManager {
+const GameSessionManagerWrapper = env => class GameSessionManager {
   constructor() {
     // Map<GuildId, Map<TextChannelId, GameSession>>
     this.serverSessions = new Map()
@@ -32,7 +32,6 @@ const GameSessionManagerWrapper = (env) => class GameSessionManager {
     const sessions = this.getGameSessions(voiceChannel.guild)
     // TODO: env.guildSettings.getCommandChannelByChannelSetting(voiceChannel.guild.id, 'lobby', voiceChannel.id)
   }*/
-
 }
 
 export default GameSessionManagerWrapper

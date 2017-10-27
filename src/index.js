@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 var fs = require('fs')
 
 var babelrc = fs.readFileSync('./.babelrc')

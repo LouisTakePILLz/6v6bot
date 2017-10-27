@@ -2,7 +2,7 @@ import * as errors from '~/errors'
 import * as utils from '~/utils'
 import defaultRuleSet from '~/gameRules'
 
-const GameRuleManagerWrapper = (env) => class GameRuleManager {
+const GameRuleManagerWrapper = env => class GameRuleManager {
   constructor() {
     this.rules = new Map()
   }

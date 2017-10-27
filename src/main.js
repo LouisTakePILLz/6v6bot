@@ -1,9 +1,6 @@
-import path from 'path'
-import fs from 'fs'
 import assert from 'assert'
 import { MongoClient } from 'mongodb'
 import Discord from 'discord.js'
-import request from 'superagent'
 import plugins from '~/plugins'
 import * as utils from '~/utils'
 import options from '~/options'
@@ -12,8 +9,11 @@ import GuildSettingsManager from '~/GuildSettingsManager'
 import GameSessionManager from '~/GameSessionManager'
 
 require('dotenv').config()
-const DISCORD_TOKEN = process.env.DISCORD_TOKEN
-const MONGODB_CONNECTION = process.env.MONGODB_CONNECTION
+
+const {
+  DISCORD_TOKEN,
+  MONGODB_CONNECTION
+} = process.env
 
 assert.ok(DISCORD_TOKEN, 'DISCORD_TOKEN env variable must be set')
 assert.ok(MONGODB_CONNECTION, 'MONGODB_CONNECTION env variable must be set')
@@ -46,8 +46,8 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
   const registeredListeners = []
   // TODO: turn PermissionManager into ES6 class
   const permissions = PermissionManager(db, bot)
-  const guildSettings = new (GuildSettingsManager({db, bot}))()
-  const gameSessions = new (GameSessionManager({db, bot, guildSettings}))
+  const guildSettings = new (GuildSettingsManager({ db, bot }))()
+  const gameSessions = new (GameSessionManager({ db, bot, guildSettings }))()
 
   const PluginAPI = {
     db,
@@ -62,7 +62,7 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
     registerCommand(command, helpInfo, fn) {
       registeredCommands.set(command, {
         fn,
-        helpInfo: typeof(helpInfo) === 'string' ? {desc: helpInfo} : helpInfo
+        helpInfo: typeof (helpInfo) === 'string' ? { desc: helpInfo } : helpInfo
       })
     },
     registerRaw(fn) {
@@ -90,10 +90,10 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
         return
       }
 
-      Array.forEach(registeredListeners, (cb) => setTimeout(() => cb(bot, message, cmd, args)))
+      Array.forEach(registeredListeners, cb => setTimeout(() => cb(bot, message, cmd, args)))
       setTimeout(() => command.fn(bot, message, args))
     } else {
-      Array.forEach(registeredListeners, (cb) => setTimeout(() => cb(bot, message, false)))
+      Array.forEach(registeredListeners, cb => setTimeout(() => cb(bot, message, false)))
     }
   })
 
