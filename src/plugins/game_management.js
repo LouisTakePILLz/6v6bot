@@ -1,9 +1,12 @@
 import * as constants from '~/constants'
 import * as errors from '~/errors'
 import * as utils from '~/utils'
+import defaultGameRules from '~/gameRules'
 import { RichEmbed } from 'discord.js'
 
-const MSG_NO_GAME_SESSION = 'No on-going game session, type `!setup` to initialize the game session'
+const GAMERULES_PER_PAGE = 5
+
+const MSG_NO_GAME_SESSION = 'No on-going game session, use the `setup` command to initialize the game session'
 
 function displayTeams(env, channel, textMessage) {
   const formatUserEntry = (member) => {
@@ -61,16 +64,73 @@ export default function load(api) {
 
   register('gamerule', {
     desc: 'Manages game rules',
-    perm: `Requires \`${constants.PERM_GAMERULE}\` or \`${constants.PERM_ADMIN}\``
-  }, (bot, message, args) => {
-    permissions.checkPermission(message, constants.PERM_GAMERULE).or(constants.PERM_ADMIN)
-      .then((granted) => {
-        if (granted) {
-          // TODO
-        } else {
-          message.channel.send('You don\'t have permission to change the game rules')
+    perm: `Requires \`${constants.PERM_GAMERULE}\` or \`${constants.PERM_ADMIN}\``,
+    extra: `**gamerule list** [<page>]
+**gamerule set** <rule> <value>
+**gamerule enable|disable** <rule>
+**gamerule show** <rule>
+`
+  }, async (bot, message, args) => {
+    const action = args[0]
+
+    const granted = await permissions.checkPermission(message, constants.PERM_GAMERULE).or(constants.PERM_ADMIN)
+    if (granted) {
+      try {
+        const registered = await guildSettings.isCommandChannelRegistered(message.guild.id, message.channel.id)
+        if (!registered) {
+          message.channel.send(constants.MSG_CMD_CHANNEL_NOT_REGISTERED)
+          return
         }
-      })
+      } catch (err) {
+        message.channel.send(constants.MSG_ERR_LOOKUP_CMDCHANNEL)
+        return
+      }
+
+      const session = gameSessions.getGameSession(message.guild, message.channel)
+
+      if (action === 'list') {
+        const gameRulesKeys = Object.keys(defaultGameRules)
+
+        const embed = new RichEmbed()
+          .setTitle('6v6 - Game Rules')
+          .setColor(0xA94AE8)
+          .setTimestamp()
+
+        const maxPage = Math.ceil(Math.max(gameRulesKeys.length / GAMERULES_PER_PAGE, 1))
+        const page = Math.max(Math.min(Number(args[1]) || 1, maxPage), 1)
+
+        embed.setFooter(`Page ${page} of ${maxPage}`, 'https://cdn.discordapp.com/embed/avatars/0.png')
+
+        const lastGameRule = Math.min(page * GAMERULES_PER_PAGE, gameRulesKeys.length)
+        for (let i = (page - 1) * GAMERULES_PER_PAGE; i < lastGameRule; i++) {
+          const gameRuleName = gameRulesKeys[i]
+          const gameRule = defaultGameRules[gameRuleName]
+          embed.addField('`' + gameRuleName + '`', gameRule.helpText, false)
+        }
+
+        message.channel.send({ embed })
+        return
+      }
+
+      if (session.initialized) {
+        message.channel.send('Unable to change game rules during setup or during an on-going game session')
+        return
+      }
+
+      if (action === 'set') {
+        // TODO
+      } else if (action === 'enable') {
+        // TODO
+      } else if (action === 'disable') {
+        // TODO
+      } else if (action === 'show') {
+        // TODO
+      } else {
+        message.channel.send('Invalid action name, check `help gamerule` for the usage information')
+      }
+    } else {
+      message.channel.send('You don\'t have permission to change the game rules')
+    }
   })
 
   register('setleader', {
@@ -376,7 +436,7 @@ export default function load(api) {
       }
 
       if (session.started) {
-        message.channel.send('Game session already started, type `!end` to stop')
+        message.channel.send('Game session already started, use the `end` command to stop')
         return
       }
 
@@ -471,7 +531,7 @@ export default function load(api) {
       const session = gameSessions.getGameSession(message.guild, message.channel)
 
       if (session.started) {
-        message.channel.send('Game session already started, type `!end` to stop')
+        message.channel.send('Game session already started, use the `end` command to stop')
         return
       }
 

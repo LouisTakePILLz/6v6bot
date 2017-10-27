@@ -6,8 +6,8 @@ const PERMS_PER_PAGE = 5
 const USERS_PER_PAGE = 9
 const ROLES_PER_PAGE = 9
 
-const MSG_INVALID_TARGET_NAME = 'Invalid target name, check `!help perm` for the usage information'
-const MSG_INVALID_PERMISSION = 'Invalid permission, check `!perm list` to list the available permissions'
+const MSG_INVALID_TARGET_NAME = 'Invalid target name, check `help perm` for the usage information'
+const MSG_INVALID_PERMISSION = 'Invalid permission, check `perm list` to list the available permissions'
 
 function showUserList(bot, message, arg) {
   message.guild.fetchMembers()
@@ -329,8 +329,8 @@ function showRolePermissions(env, message, roleId) {
 export default function load(api) {
   const { registerCommand: register, permissions } = api
 
-  permissions.registerPermission(constants.PERM_PERMISSIONS, 'Allows managing permissions using the !perm command (also allows using !roles and !users)')
-  permissions.registerPermission(constants.PERM_LISTING, 'Allows listing users and roles using the !users and !roles commands')
+  permissions.registerPermission(constants.PERM_PERMISSIONS, 'Allows managing permissions using the `perm` command (also allows using `roles` and `users`)')
+  permissions.registerPermission(constants.PERM_LISTING, 'Allows listing users and roles using the `users` and `roles` commands')
 
   register('roles', {
     desc: 'Lists roles and their snowflake identifiers (`flake_id`), useful for configuring permissions',
@@ -434,7 +434,7 @@ export default function load(api) {
           message.channel.send(MSG_INVALID_TARGET_NAME)
         }
       } else {
-        message.channel.send('Invalid action name, check `!help perm` for the usage information')
+        message.channel.send('Invalid action name, check `help perm` for the usage information')
       }
     } else {
       message.channel.send('You don\'t have permission to manage permissions')

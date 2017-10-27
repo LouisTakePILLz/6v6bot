@@ -1,6 +1,6 @@
 import * as errors from '~/errors'
 import * as utils from '~/utils'
-import defaultRuleSet from '~/gameRules'
+import defaultGameRules from '~/gameRules'
 
 const GameRuleManagerWrapper = env => class GameRuleManager {
   constructor() {
@@ -14,18 +14,18 @@ const GameRuleManagerWrapper = env => class GameRuleManager {
   isEnabled(ruleName) {
     const ruleNode = this.getRule(ruleName)
     if (ruleNode == null) {
-      if (defaultRuleSet[ruleName] == null) {
+      if (defaultGameRules[ruleName] == null) {
         return false
       }
 
-      return defaultRuleSet[ruleName].enabled
+      return defaultGameRules[ruleName].enabled
     }
 
     return ruleNode.enabled
   }
 
   setRule(rule, value) {
-    const defaultRule = defaultRuleSet[rule]
+    const defaultRule = defaultGameRules[rule]
     if (defaultRule.type === Boolean) {
       const boolValue = utils.stringToBoolean(value)
       if (boolValue == null) {

@@ -224,6 +224,7 @@ const GameSessionWrapper = env => class GameSession {
       await this.moveMembersToLobby()
       this._resetTeams()
 
+      this.initialized = false
       this.started = false
     } catch (err) {
       if (err instanceof errors.DiscordAPIError && err.code === 50013) {
