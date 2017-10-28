@@ -61,8 +61,7 @@ function showRoleList(bot, message, arg) {
   message.channel.send({ embed })
 }
 
-async function grantUserPermission(env, message, memberId, permission) {
-  const { permNodes, api: { permissions } } = env
+async function grantUserPermission({ permNodes, api: { permissions } }, message, memberId, permission) {
   const { members } = message.guild
 
   // Check if the member ID is valid
@@ -82,7 +81,6 @@ async function grantUserPermission(env, message, memberId, permission) {
           message.channel.send('An error occured while trying to grant user permission (unknown result)')
         }
       } catch (err) {
-        console.log('grantUserPermission ERROR', err)
         message.channel.send('An error occured while trying to grant user permission')
       }
     } else {
@@ -93,8 +91,7 @@ async function grantUserPermission(env, message, memberId, permission) {
   }
 }
 
-async function revokeUserPermission(env, message, memberId, permission) {
-  const { permNodes, api: { permissions } } = env
+async function revokeUserPermission({ permNodes, api: { permissions } }, message, memberId, permission) {
   const { members } = message.guild
 
   // TODO: check if the member is part of the server only after trying to revoke the permission?
@@ -115,7 +112,6 @@ async function revokeUserPermission(env, message, memberId, permission) {
           message.channel.send('An error occured while trying to revoke user permission (unknown result)')
         }
       } catch (err) {
-        console.log('revokeUserPermission ERROR', err)
         message.channel.send('An error occured while trying to revoke user permission')
       }
     } else {
@@ -126,8 +122,7 @@ async function revokeUserPermission(env, message, memberId, permission) {
   }
 }
 
-async function grantRolePermission(env, message, roleId, permission) {
-  const { permNodes, api: { permissions } } = env
+async function grantRolePermission({ permNodes, api: { permissions } }, message, roleId, permission) {
   const { roles } = message.guild
 
   // Check if the role ID is valid
@@ -146,7 +141,6 @@ async function grantRolePermission(env, message, roleId, permission) {
           message.channel.send('An error occured while trying to grant role permission (unknown result)')
         }
       } catch (err) {
-        console.log('grantRolePermission ERROR', err)
         message.channel.send('An error occured while trying to grant role permission')
       }
     } else {
@@ -157,8 +151,7 @@ async function grantRolePermission(env, message, roleId, permission) {
   }
 }
 
-async function revokeRolePermission(env, message, roleId, permission) {
-  const { permNodes, api: { permissions } } = env
+async function revokeRolePermission({ permNodes, api: { permissions } }, message, roleId, permission) {
   const { roles } = message.guild
 
   // Check if the role ID is valid
@@ -177,8 +170,7 @@ async function revokeRolePermission(env, message, roleId, permission) {
           message.channel.send('An error occured while trying to revoke role permission (unknown result)')
         }
       } catch (err) {
-        console.log('revokeRolePermission ERROR', err)
-        message.channel.send('An error occured while trying to clear role permissions')
+        message.channel.send('An error occured while trying to revoke role permission')
       }
     } else {
       message.channel.send(MSG_INVALID_PERMISSION)
@@ -188,8 +180,7 @@ async function revokeRolePermission(env, message, roleId, permission) {
   }
 }
 
-async function clearUserPermissions(env, message, memberId) {
-  const { api: { db } } = env
+async function clearUserPermissions({ api: { permissions } }, message, memberId) {
   const { guild } = message
   const { members } = guild
 
@@ -198,8 +189,8 @@ async function clearUserPermissions(env, message, memberId) {
   // Check if the member ID is valid
   const targetMember = members.get(memberId)
   if (targetMember != null) {
-    const { result } = await db.collection('user_permissions').deleteMany({ guildId: guild.id, userId: memberId, node: { $exists: true } })
     try {
+      const { result } = await permissions.clearUserPermissions(guild, targetMember)
       if (result.ok === 1) {
         message.channel.send(`Revoked all permissions for user \`${utils.sanitizeCode(targetMember.displayName)}\``)
       } else {
@@ -207,7 +198,6 @@ async function clearUserPermissions(env, message, memberId) {
         message.channel.send('An error occured while trying to clear user permissions (unknown result)')
       }
     } catch (err) {
-      console.log('clearUserPermissions ERROR', err)
       message.channel.send('An error occured while trying to clear user permissions')
     }
   } else {
@@ -215,16 +205,15 @@ async function clearUserPermissions(env, message, memberId) {
   }
 }
 
-async function clearRolePermissions(env, message, roleId) {
-  const { api: { db } } = env
+async function clearRolePermissions({ api: { permissions } }, message, roleId) {
   const { guild } = message
   const { roles } = guild
 
   // Check if the role ID is valid
   const targetRole = roles.get(roleId)
   if (targetRole != null) {
-    const { result } = await db.collection('role_permissions').deleteMany({ guildId: guild.id, roleId, node: { $exists: true } })
     try {
+      const { result } = await permissions.clearRolePermissions(guild, targetRole)
       if (result.ok === 1) {
         message.channel.send(`Revoked all permissions for role \`${utils.sanitizeCode(targetRole.name)}\``)
       } else {
@@ -233,14 +222,14 @@ async function clearRolePermissions(env, message, roleId) {
       }
     } catch (err) {
       console.log('clearRolePermissions DB ERROR', err)
+      message.channel.send('An error occured while trying to clear role permissions')
     }
   } else {
     message.channel.send(MSG_INVALID_TARGET_NAME)
   }
 }
 
-function showUserPermissions(env, message, memberId) {
-  const { api: { db } } = env
+function showUserPermissions({ api: { db } }, message, memberId) {
   const { guild } = message
   const { members } = guild
 
@@ -286,8 +275,7 @@ function showUserPermissions(env, message, memberId) {
   })
 }
 
-function showRolePermissions(env, message, roleId) {
-  const { api: { db } } = env
+function showRolePermissions({ api: { db } }, message, roleId) {
   const { guild } = message
   const { roles } = guild
 
@@ -335,29 +323,25 @@ export default function load(api) {
   register('roles', {
     desc: 'Lists roles and their snowflake identifiers (`flake_id`), useful for configuring permissions',
     perm: `Requires \`${constants.PERM_LISTING}\` or \`${constants.PERM_PERMISSIONS}\``
-  }, (bot, message, args) => {
-    permissions.checkPermission(message, constants.PERM_PERMISSIONS).or(constants.PERM_LISTING)
-      .then((granted) => {
-        if (granted) {
-          showRoleList(bot, message, args[0])
-        } else {
-          message.channel.send('You don\'t have permission to list roles')
-        }
-      })
+  }, async (bot, message, args) => {
+    const granted = await permissions.checkPermission(message, constants.PERM_PERMISSIONS).or(constants.PERM_LISTING)
+    if (granted) {
+      showRoleList(bot, message, args[0])
+    } else {
+      message.channel.send('You don\'t have permission to list roles')
+    }
   })
 
   register('users', {
     desc: 'Lists users and their snowflake identifiers (`flake_id`), useful for configuring permissions',
     perm: `Requires \`${constants.PERM_LISTING}\` or \`${constants.PERM_PERMISSIONS}\``
-  }, (bot, message, args) => {
-    permissions.checkPermission(message, constants.PERM_PERMISSIONS).or(constants.PERM_LISTING)
-      .then((granted) => {
-        if (granted) {
-          showUserList(bot, message, args[0])
-        } else {
-          message.channel.send('You don\'t have permission to list users')
-        }
-      })
+  }, async (bot, message, args) => {
+    const granted = await permissions.checkPermission(message, constants.PERM_PERMISSIONS).or(constants.PERM_LISTING)
+    if (granted) {
+      showUserList(bot, message, args[0])
+    } else {
+      message.channel.send('You don\'t have permission to list users')
+    }
   })
 
   register('perm', {
@@ -373,7 +357,7 @@ export default function load(api) {
     if (granted) {
       const action = args[0]
 
-      const permNodes = await permissions.getPermissions()
+      const permNodes = permissions.getPermissions()
       if (permNodes.size === 0) {
         console.log('No permissions registered?')
         return

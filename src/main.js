@@ -44,8 +44,7 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
 
   const registeredCommands = new Map()
   const registeredListeners = []
-  // TODO: turn PermissionManager into ES6 class
-  const permissions = PermissionManager(db, bot)
+  const permissions = new (PermissionManager({ db, bot }))()
   const guildSettings = new (GuildSettingsManager({ db, bot }))()
   const gameSessions = new (GameSessionManager({ db, bot, guildSettings }))()
 
