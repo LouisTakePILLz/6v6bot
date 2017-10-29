@@ -16,8 +16,8 @@ const GameSessionWrapper = env => class GameSession {
   _resetTeams() {
     // Maps preserve insertion order
     this.teams = {
-      team1: { members: new Map() },
-      team2: { members: new Map() }
+      team1: { leader: {}, members: new Map() },
+      team2: { leader: {}, members: new Map() }
     }
   }
 
@@ -27,7 +27,7 @@ const GameSessionWrapper = env => class GameSession {
     }
 
     const enemyTeam = teamName === 'team1' ? 'team2' : 'team1'
-    const enemyLeader = this.teams[enemyTeam].leader
+    const { member: enemyLeader } = this.teams[enemyTeam].leader
 
     if (enemyLeader != null) {
       const enemyLeaderIndex = members.findIndex(x => x.id === enemyLeader.id)
@@ -42,9 +42,31 @@ const GameSessionWrapper = env => class GameSession {
 
     const randomMember = members[Math.floor(Math.random() * members.length)]
 
-    this.teams[teamName].leader = randomMember
+    this.teams[teamName].leader = { member: randomMember }
+  }
 
-    return randomMember
+  _pickRandomHeroes(teamName) {
+    if (teamName !== 'team1' && teamName !== 'team2') {
+      throw new errors.InvalidTeamNameError(teamName)
+    }
+
+    const noLimits = this.gameRules.isEnabled('ow_noLimits')
+
+    const heroPool = Object.keys(constants.OW_HERO_NAMES)
+
+    const pickHeroFor = (entry) => {
+      const index = Math.floor(Math.random() * heroPool.length)
+      const randomHero = noLimits ? heroPool[index] : heroPool.splice(index, 1)[0]
+
+      entry.hero = randomHero
+    }
+
+    const { leader, members } = this.teams[teamName]
+
+    pickHeroFor(leader)
+    for (const [, entry] of members) {
+      pickHeroFor(entry)
+    }
   }
 
   removeFromTeam(teamName, member) {
@@ -73,15 +95,20 @@ const GameSessionWrapper = env => class GameSession {
         return
       }
 
-      if (member.id === this.teams.team1.leader.id ||
-        member.id === this.teams.team2.leader.id ||
+      if (this.teams[teamName].member.size >= 5) {
+        reject(new errors.TeamFullError())
+        return
+      }
+
+      if (member.id === this.teams.team1.leader.member.id ||
+        member.id === this.teams.team2.leader.member.id ||
         this.teams.team1.members.has(member.id) ||
         this.teams.team2.members.has(member.id)
       ) {
         throw new errors.DuplicatePlayerError('The target member is already on a team')
       }
 
-      this.teams[teamName].members.set(member.id, member)
+      this.teams[teamName].members.set(member.id, { member })
 
       console.log(this.teams[teamName].members.keys())
 
@@ -135,11 +162,11 @@ const GameSessionWrapper = env => class GameSession {
 
     const promises = [
       // Move Team 1
-      moveToVoiceChannel(this.teams.team1.leader, team1VoiceChannel),
-      ...[...this.teams.team1.members.values].map(([, member]) => moveToVoiceChannel(member, team1VoiceChannel)),
+      moveToVoiceChannel(this.teams.team1.leader.member, team1VoiceChannel),
+      ...[...this.teams.team1.members.values].map(([, { member }]) => moveToVoiceChannel(member, team1VoiceChannel)),
       // Move Team 2
-      moveToVoiceChannel(this.teams.team2.leader, team2VoiceChannel),
-      ...[...this.teams.team2.members.values].map(([, member]) => moveToVoiceChannel(member, team2VoiceChannel)),
+      moveToVoiceChannel(this.teams.team2.leader.member, team2VoiceChannel),
+      ...[...this.teams.team2.members.values].map(([, { member }]) => moveToVoiceChannel(member, team2VoiceChannel)),
     ]
 
     await Promise.all(promises)
@@ -176,11 +203,11 @@ const GameSessionWrapper = env => class GameSession {
 
     const promises = [
       // Move Team 1
-      moveToLobby(this.teams.team1.leader),
-      ...[...this.teams.team1.members].map(([, member]) => moveToLobby(member)),
+      moveToLobby(this.teams.team1.leader.member),
+      ...[...this.teams.team1.members].map(([, { member }]) => moveToLobby(member)),
       // Move Team 2
-      moveToLobby(this.teams.team2.leader),
-      ...[...this.teams.team2.members].map(([, member]) => moveToLobby(member)),
+      moveToLobby(this.teams.team2.leader.member),
+      ...[...this.teams.team2.members].map(([, { member }]) => moveToLobby(member)),
     ]
 
     await Promise.all(promises)
@@ -208,6 +235,11 @@ const GameSessionWrapper = env => class GameSession {
   async start() {
     try {
       await this.moveMembersToChannels()
+
+      if (this.gameRules.isEnabled('ow_mysteryHeroes')) {
+        this._pickRandomHeroes('team1')
+        this._pickRandomHeroes('team2')
+      }
 
       this.started = true
     } catch (err) {

@@ -3,6 +3,34 @@ export const TEAM_NAMES = {
   team2: 'Team 2'
 }
 
+export const OW_HERO_NAMES = {
+  doomfist: 'Doomfist',
+  genji: 'Genji',
+  mccree: 'McCree',
+  pharah: 'Pharah',
+  reaper: 'Reaper',
+  soldier: 'Soldier: 76',
+  sombra: 'Sombra',
+  tracer: 'Tracer',
+  bastion: 'Bastion',
+  hanzo: 'Hanzo',
+  junkrat: 'Junkrat',
+  mei: 'Mei',
+  torbjorn: 'Torbjörn',
+  widowmaker: 'Widowmaker',
+  dva: 'D.Va',
+  orisa: 'Orisa',
+  reinhardt: 'Reinhardt',
+  roadhog: 'Roadhog',
+  winston: 'Winston',
+  zarya: 'Zarya',
+  ana: 'Ana',
+  lucio: 'Lucio',
+  mercy: 'Mercy',
+  symmetra: 'Symmetra',
+  zenyatta: 'Zenyatta'
+}
+
 export const EMBED_COLOR = 0xA94AE8
 
 export const PERM_ADMIN = 'administrate_lobby'

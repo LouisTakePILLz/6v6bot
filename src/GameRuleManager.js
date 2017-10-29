@@ -34,7 +34,9 @@ const GameRuleManagerWrapper = (env: { db: MongoClient }) => class GameRuleManag
       const docs = await cur.toArray()
 
       for (const doc of docs) {
-        this.rules.set(doc.ruleName, { enabled: doc.enabled, value: doc.value })
+        if (defaultGameRules[doc.ruleName] != null) {
+          this.rules.set(doc.ruleName, { enabled: doc.enabled, value: doc.value })
+        }
       }
     } catch (err) {
       console.log('getRules ERROR', err)
@@ -45,24 +47,28 @@ const GameRuleManagerWrapper = (env: { db: MongoClient }) => class GameRuleManag
   }
 
   async getRule(ruleName: string) {
-    return (await this.getRules()).get(ruleName)
+    const normalizedRuleName = ruleName.toLowerCase()
+    const defaultRule = defaultGameRules[normalizedRuleName]
+
+    if (defaultRule == null) {
+      throw new errors.InvalidGameRuleError(ruleName)
+    }
+
+    const rule = (await this.getRules()).get(normalizedRuleName)
+    if (rule != null) {
+      return { ...defaultRule, rule }
+    }
+
+    return defaultRule
   }
 
   async isEnabled(ruleName: string) {
-    const ruleNode = await this.getRule(ruleName)
-    if (ruleNode == null) {
-      if (defaultGameRules[ruleName] == null) {
-        return false
-      }
-
-      return defaultGameRules[ruleName].enabled
-    }
-
-    return ruleNode.enabled
+    return (await this.getRule(ruleName)).enabled
   }
 
   async setEnabled(ruleName: string, value: boolean) {
-    const defaultRule = defaultGameRules[ruleName]
+    const normalizedRuleName = ruleName.toLowerCase()
+    const defaultRule = defaultGameRules[normalizedRuleName]
 
     if (defaultRule == null) {
       throw new errors.InvalidGameRuleError(ruleName)
@@ -74,7 +80,7 @@ const GameRuleManagerWrapper = (env: { db: MongoClient }) => class GameRuleManag
     }
 
     const rules = await this.getRules()
-    rules.set(ruleName, { enabled: boolValue })
+    rules.set(normalizedRuleName, { ...rules.get(normalizedRuleName), enabled: boolValue })
 
     const query = {
       guildId: this.gameSession.guild.id,
@@ -91,7 +97,9 @@ const GameRuleManagerWrapper = (env: { db: MongoClient }) => class GameRuleManag
   }
 
   async setRule(ruleName: string, value: any) {
-    const defaultRule = defaultGameRules[ruleName]
+    const normalizedRuleName = ruleName.toLowerCase()
+    const defaultRule = defaultGameRules[normalizedRuleName]
+
     if (defaultRule == null) {
       throw new errors.InvalidGameRuleError(ruleName)
     }
@@ -100,8 +108,13 @@ const GameRuleManagerWrapper = (env: { db: MongoClient }) => class GameRuleManag
       defaultRule.validate(value)
     }
 
+    const rules = await this.getRules()
+
     if (defaultRule.type === Boolean) {
-      await this.setEnabled(ruleName, value)
+      await this.setEnabled(normalizedRuleName, value)
+    } else if (defaultRule.type === String) {
+      rules.set(normalizedRuleName, { ...rules.get(normalizedRuleName), value })
+      await this.setEnabled(normalizedRuleName, true)
     } else {
       throw new Error(`Unsupported rule type: ${defaultRule.type && defaultRule.type.name}`)
     }

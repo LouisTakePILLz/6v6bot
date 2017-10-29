@@ -1,37 +1,28 @@
+import { RichEmbed } from 'discord.js'
 import * as constants from '~/constants'
 import * as errors from '~/errors'
 import * as utils from '~/utils'
 import gameRules from '~/gameRules'
-import { RichEmbed } from 'discord.js'
 
 const GAMERULES_PER_PAGE = 5
 
 const MSG_NO_GAME_SESSION = 'No on-going game session, use the `setup` command to initialize the game session'
 
 async function showGameRule({ session }, message, ruleName) {
-  const defaultRule = gameRules[ruleName]
-
-  if (defaultRule == null) {
-    throw new errors.InvalidGameRuleError(ruleName)
-  }
-
-  const rule = {
-    ...defaultRule,
-    ...await session.gameRules.getRule(ruleName),
-  }
+  const rule = await session.gameRules.getRule(ruleName)
 
   const embed = new RichEmbed()
-    .setTitle(`6v6 - Game rule: ${utils.sanitizeCode(ruleName)}`)
+    .setTitle(`6v6 - Game Rule: ${utils.sanitizeCode(rule.ruleName)}`)
     .setColor(constants.EMBED_COLOR)
     .setTimestamp()
     .setDescription('__**Description**__\n' + rule.helpText)
-    .addField('**Enabled**', '`' + rule.enabled + '`', false)
+    .addField('**Enabled**', '`' + (rule.enabled || false) + '`', false)
 
-  let defaults = `Enabled: \`${rule.enabled}\``
+  let defaults = `Enabled: \`${rule.enabled || false}\``
 
   if (rule.type !== Boolean) {
-    embed.addField('**Value**', '`' + utils.sanitizeCode(rule.value) + '`', false)
-    defaults += `\nValue: \`${rule.value}\``
+    embed.addField('**Value**', '`' + utils.sanitizeCode(rule.value || 'null') + '`', false)
+    defaults += `\nValue: \`${rule.value || 'null'}\``
   }
 
   embed.addField('**Defaults**', defaults, false)
@@ -40,15 +31,20 @@ async function showGameRule({ session }, message, ruleName) {
 }
 
 function displayTeams(env, channel, textMessage) {
-  const formatUserEntry = (member) => {
-    const entry = `**${member.displayName}**`
+  const formatUserEntry = ({ member, hero }) => {
+    let entry = `**${member.displayName}**`
+
+    if (hero != null) {
+      entry += ` - ${constants.OW_HERO_NAMES[hero]}`
+    }
+
     return utils.sanitizeCode(entry)
   }
 
   const getMemberList = (teamName) => {
     let list = '*Empty*'
-    if (env.session.teams[teamName].leader != null) {
-      list = formatUserEntry(env.session.teams[teamName].leader) + '\u{1F451}'
+    if (env.session.teams[teamName].leader.member != null) {
+      list = formatUserEntry(env.session.teams[teamName].leader) + ' \u{1F451}'
     }
 
     const members = [...env.session.teams[teamName].members.values()]
@@ -136,7 +132,7 @@ export default function load(api) {
         for (let i = (page - 1) * GAMERULES_PER_PAGE; i < lastGameRule; i++) {
           const gameRuleName = gameRulesKeys[i]
           const gameRule = gameRules[gameRuleName]
-          embed.addField('`' + gameRuleName + '`', gameRule.helpText, false)
+          embed.addField('`' + gameRule.ruleName + '`', gameRule.helpText, false)
         }
 
         message.channel.send({ embed })
@@ -267,17 +263,21 @@ export default function load(api) {
         )
         const memberPool = [...lobbyVoiceChannel.members.values()]
 
-        const teamLeader = session.teams[teamName].leader
-        const teamLeaderIndex = memberPool.findIndex(x => x.id === teamLeader.id)
-        if (teamLeaderIndex != null) {
-          memberPool.splice(teamLeaderIndex, 1)
+        const { member: teamLeader } = session.teams[teamName].leader
+        if (teamLeader != null) {
+          const teamLeaderIndex = memberPool.findIndex(x => x.id === teamLeader.id)
+          if (~teamLeaderIndex) {
+            memberPool.splice(teamLeaderIndex, 1)
+          }
         }
 
         const enemyTeam = teamName === 'team1' ? 'team2' : 'team1'
-        const enemyLeader = session.teams[enemyTeam].leader
-        const enemyLeaderIndex = memberPool.findIndex(x => x.id === enemyLeader.id)
-        if (enemyLeaderIndex != null) {
-          memberPool.splice(enemyLeaderIndex, 1)
+        const { member: enemyLeader } = session.teams[enemyTeam].leader
+        if (enemyLeader != null) {
+          const enemyLeaderIndex = memberPool.findIndex(x => x.id === enemyLeader.id)
+          if (~enemyLeaderIndex) {
+            memberPool.splice(enemyLeaderIndex, 1)
+          }
         }
 
         if (memberPool.length === 0) {
@@ -308,7 +308,7 @@ export default function load(api) {
         return
       }
 
-      session.teams[teamName].leader = targetMember
+      session.teams[teamName].leader = { member: targetMember }
 
       message.channel.send(msg || `${targetMember} has been set as the team leader for ${constants.TEAM_NAMES[teamName]}`)
     } else {
@@ -329,8 +329,8 @@ export default function load(api) {
       return
     }
 
-    const team1Leader = session.teams.team1.leader || {}
-    const team2Leader = session.teams.team2.leader || {}
+    const team1Leader = session.teams.team1.leader.member || {}
+    const team2Leader = session.teams.team2.leader.member || {}
 
     const targetMember = utils.resolveMember(message.guild, mention)
 
@@ -370,7 +370,7 @@ export default function load(api) {
     try {
       await session.removeFromTeam(targetTeam, targetMember)
       const msg = `${targetMember} was removed from ${constants.TEAM_NAMES[targetTeam]}\n`
-                + `It's ${session.teams[session.getTurn()].leader}'s turn to pick`
+                + `It's ${session.teams[session.getTurn()].leader.member}'s turn to pick`
 
       message.channel.send(msg)
     } catch (err) {
@@ -398,8 +398,8 @@ export default function load(api) {
       return
     }
 
-    const team1Leader = session.teams.team1.leader
-    const team2Leader = session.teams.team2.leader
+    const { member: team1Leader } = session.teams.team1.leader
+    const { member: team2Leader } = session.teams.team2.leader
 
     if (teamName == null &&
       (
@@ -438,11 +438,16 @@ export default function load(api) {
           await session.addToTeam(teamName, targetMember)
           message.channel.send(
             `${targetMember} was added to ${constants.TEAM_NAMES[teamName]}\n` +
-            `It's ${session.teams[session.getTurn()].leader}'s turn to pick`
+            `It's ${session.teams[session.getTurn()].leader.member}'s turn to pick`
           )
         } catch (err) {
           if (err instanceof errors.DuplicatePlayerError) {
             message.channel.send(`${targetMember} is already on a team`)
+            return
+          }
+
+          if (err instanceof errors.TeamFullError) {
+            message.channel.send('The team is full')
             return
           }
 
@@ -456,7 +461,7 @@ export default function load(api) {
       // Pick user as team leader
       const turnTeamName = session.getTurn()
       if (turnTeamName !== leaderTeamName) {
-        message.channel.send(`It's currently ${session.teams[turnTeamName].leader}'s turn to pick`)
+        message.channel.send(`It's currently ${session.teams[turnTeamName].leader.member}'s turn to pick`)
         return
       }
 
@@ -466,9 +471,9 @@ export default function load(api) {
 
         let msg = `${targetMember} was added to ${constants.TEAM_NAMES[leaderTeamName]}\n`
         if (session.getTurn() === turnTeamName) {
-          msg += `It's still ${session.teams[leaderTeamName].leader}'s turn to pick`
+          msg += `It's still ${session.teams[leaderTeamName].leader.member}'s turn to pick`
         } else {
-          msg += `It's ${session.teams[enemyTeamName].leader}'s turn to pick`
+          msg += `It's ${session.teams[enemyTeamName].leader.member}'s turn to pick`
         }
 
         message.channel.send(msg)
@@ -632,9 +637,9 @@ export default function load(api) {
         let msg = 'Game session initialized!'
 
         if (session.gameRules.isEnabled('randomLeaders')) {
-          msg += `\n${session.teams.team1.leader} was randomly chosen as leader for ${constants.TEAM_NAMES.team1}`
-               + `\n${session.teams.team2.leader} was randomly chosen as leader for ${constants.TEAM_NAMES.team2}`
-               + `\n\n${session.teams[session.getTurn()].leader} gets to pick first`
+          msg += `\n${session.teams.team1.leader.member} was randomly chosen as leader for ${constants.TEAM_NAMES.team1}`
+               + `\n${session.teams.team2.leader.member} was randomly chosen as leader for ${constants.TEAM_NAMES.team2}`
+               + `\n\n${session.teams[session.getTurn()].leader.member} gets to pick first`
         }
 
         message.channel.send(msg)
