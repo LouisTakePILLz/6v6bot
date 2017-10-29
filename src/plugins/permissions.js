@@ -19,7 +19,7 @@ function showUserList(bot, message, arg) {
 
   const embed = new RichEmbed()
     .setTitle('6v6 - Users')
-    .setColor(0xA94AE8)
+    .setColor(constants.EMBED_COLOR)
     .setTimestamp()
 
   const maxPage = Math.ceil(Math.max(flakes.length / USERS_PER_PAGE, 1))
@@ -44,7 +44,7 @@ function showRoleList(bot, message, arg) {
 
   const embed = new RichEmbed()
     .setTitle('6v6 - Roles')
-    .setColor(0xA94AE8)
+    .setColor(constants.EMBED_COLOR)
     .setTimestamp()
 
   const maxPage = Math.ceil(Math.max(flakes.length / ROLES_PER_PAGE, 1))
@@ -266,7 +266,7 @@ function showUserPermissions({ api: { db } }, message, memberId) {
 
       const embed = new RichEmbed()
         .setTitle(`6v6 - User permissions: ${utils.sanitizeCode(targetMember.displayName)}`)
-        .setColor(0xA94AE8)
+        .setColor(constants.EMBED_COLOR)
         .setTimestamp()
         .setDescription('__**Permissions**__\n' + permissionList)
 
@@ -302,7 +302,7 @@ function showRolePermissions({ api: { db } }, message, roleId) {
 
         const embed = new RichEmbed()
           .setTitle(`6v6 - Role permissions: ${utils.sanitizeCode(targetRole.name)}`)
-          .setColor(0xA94AE8)
+          .setColor(constants.EMBED_COLOR)
           .setTimestamp()
           .setDescription('__**Permissions**__\n' + permissionList)
 
@@ -370,7 +370,7 @@ export default function load(api) {
 
         const embed = new RichEmbed()
           .setTitle('6v6 - Permissions')
-          .setColor(0xA94AE8)
+          .setColor(constants.EMBED_COLOR)
           .setTimestamp()
 
         const maxPage = Math.ceil(Math.max(permNodes.size / PERMS_PER_PAGE, 1))

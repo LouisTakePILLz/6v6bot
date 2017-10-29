@@ -3,6 +3,8 @@ export const TEAM_NAMES = {
   team2: 'Team 2'
 }
 
+export const EMBED_COLOR = 0xA94AE8
+
 export const PERM_ADMIN = 'administrate_lobby'
 export const PERM_SETUP = 'setup'
 export const PERM_GAMERULE = 'gamerules'

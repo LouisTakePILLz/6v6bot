@@ -6,13 +6,24 @@ export class GenericError extends Error {
   }
 }
 
-export class InvalidGameRuleValue extends Error {
+export class InvalidGameRuleError extends Error {
   constructor(value, ...params) {
     super(...params)
 
-    this.gameRuleValue = value
+    this.ruleName = value
   }
 }
+
+export class InvalidGameRuleValueError extends Error {
+  constructor(type, value, ...params) {
+    super(...params)
+
+    this.ruleType = type
+    this.ruleValue = value
+  }
+}
+
+export class GameruleValidationError extends GenericError {}
 
 // Used for reporting missing channels...
 export class ChannelConfigurationError extends GenericError {

@@ -1,4 +1,5 @@
 import { RichEmbed } from 'discord.js'
+import * as constants from '~/constants'
 import * as utils from '~/utils'
 
 const COMMANDS_PER_PAGE = 5
@@ -10,7 +11,7 @@ export default function load({ registerCommand: register, getCommands }) {
     extra: '**help** [<page>]\n**help** <command>'
   }, (bot, message, args) => {
     const embed = new RichEmbed()
-      .setColor(0xA94AE8)
+      .setColor(constants.EMBED_COLOR)
       .setTimestamp()
 
     const commands = getCommands()

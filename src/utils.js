@@ -15,11 +15,15 @@ export function isPositiveInteger(input) {
 }
 
 export function stringToBoolean(input) {
-  if (input.equalsIgnoreCase('true') || input === '1') {
+  if (typeof (input) === 'boolean') {
+    return input
+  }
+
+  if (input.toLowerCase() === 'true' || input === '1') {
     return true
   }
 
-  if (input.equalsIgnoreCase('false') || input === '0') {
+  if (input.toLowerCase() === 'false' || input === '0') {
     return false
   }
 

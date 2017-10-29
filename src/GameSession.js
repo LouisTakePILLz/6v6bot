@@ -9,7 +9,7 @@ const GameSessionWrapper = env => class GameSession {
     this.cmdChannel = cmdChannel
     this.initialized = false
     this.started = false
-    this.gameRules = new (GameRuleManager(env))()
+    this.gameRules = new (GameRuleManager(env))(this)
     this._resetTeams()
   }
 

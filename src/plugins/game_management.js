@@ -1,12 +1,43 @@
 import * as constants from '~/constants'
 import * as errors from '~/errors'
 import * as utils from '~/utils'
-import defaultGameRules from '~/gameRules'
+import gameRules from '~/gameRules'
 import { RichEmbed } from 'discord.js'
 
 const GAMERULES_PER_PAGE = 5
 
 const MSG_NO_GAME_SESSION = 'No on-going game session, use the `setup` command to initialize the game session'
+
+async function showGameRule({ session }, message, ruleName) {
+  const defaultRule = gameRules[ruleName]
+
+  if (defaultRule == null) {
+    throw new errors.InvalidGameRuleError(ruleName)
+  }
+
+  const rule = {
+    ...defaultRule,
+    ...await session.gameRules.getRule(ruleName),
+  }
+
+  const embed = new RichEmbed()
+    .setTitle(`6v6 - Game rule: ${utils.sanitizeCode(ruleName)}`)
+    .setColor(constants.EMBED_COLOR)
+    .setTimestamp()
+    .setDescription('__**Description**__\n' + rule.helpText)
+    .addField('**Enabled**', '`' + rule.enabled + '`', false)
+
+  let defaults = `Enabled: \`${rule.enabled}\``
+
+  if (rule.type !== Boolean) {
+    embed.addField('**Value**', '`' + utils.sanitizeCode(rule.value) + '`', false)
+    defaults += `\nValue: \`${rule.value}\``
+  }
+
+  embed.addField('**Defaults**', defaults, false)
+
+  message.channel.send({ embed })
+}
 
 function displayTeams(env, channel, textMessage) {
   const formatUserEntry = (member) => {
@@ -32,7 +63,7 @@ function displayTeams(env, channel, textMessage) {
     // TODO: customizable team names?
     .setTitle('__6v6 Session - Team 1 vs. Team 2__')
     .setDescription('Drafted Teams')
-    .setColor(0xA94AE8)
+    .setColor(constants.EMBED_COLOR)
     .setTimestamp()
     .setFooter('Team drafts', 'https://cdn.discordapp.com/embed/avatars/0.png')
     .addField('__**Team 1**__', getMemberList('team1'), true)
@@ -89,11 +120,11 @@ export default function load(api) {
       const session = gameSessions.getGameSession(message.guild, message.channel)
 
       if (action === 'list') {
-        const gameRulesKeys = Object.keys(defaultGameRules)
+        const gameRulesKeys = Object.keys(gameRules)
 
         const embed = new RichEmbed()
           .setTitle('6v6 - Game Rules')
-          .setColor(0xA94AE8)
+          .setColor(constants.EMBED_COLOR)
           .setTimestamp()
 
         const maxPage = Math.ceil(Math.max(gameRulesKeys.length / GAMERULES_PER_PAGE, 1))
@@ -104,7 +135,7 @@ export default function load(api) {
         const lastGameRule = Math.min(page * GAMERULES_PER_PAGE, gameRulesKeys.length)
         for (let i = (page - 1) * GAMERULES_PER_PAGE; i < lastGameRule; i++) {
           const gameRuleName = gameRulesKeys[i]
-          const gameRule = defaultGameRules[gameRuleName]
+          const gameRule = gameRules[gameRuleName]
           embed.addField('`' + gameRuleName + '`', gameRule.helpText, false)
         }
 
@@ -118,13 +149,74 @@ export default function load(api) {
       }
 
       if (action === 'set') {
-        // TODO
+        const ruleName = args[1]
+        const value = args[2]
+
+        try {
+          await session.gameRules.setRule(ruleName, value)
+          await showGameRule({ session }, message, ruleName)
+        } catch (err) {
+          if (err instanceof errors.InvalidGameRuleError) {
+            message.channel.send(`Invalid gamerule \`${utils.sanitizeCode(err.ruleName)}\``)
+            return
+          }
+
+          if (err instanceof errors.InvalidGameRuleValueError) {
+            if (err.ruleType === Boolean) {
+              message.channel.send(`Invalid value \`${utils.sanitizeCode(err.ruleValue)}\`, possible values: \`true\`, \`false\``)
+            }
+            return
+          }
+
+          if (err instanceof errors.GameruleValidationError) {
+            message.channel.send(`Validation error: ${err.errMsg}`)
+            return
+          }
+
+          console.log('gamerule set ERROR', err)
+          message.channel.send('An error occured while trying to set the value for a gamerule')
+        }
       } else if (action === 'enable') {
-        // TODO
+        const ruleName = args[1]
+        try {
+          await session.gameRules.setRule(ruleName, true)
+          await showGameRule({ session }, message, ruleName)
+        } catch (err) {
+          if (err instanceof errors.InvalidGameRuleError) {
+            message.channel.send(`Invalid gamerule \`${utils.sanitizeCode(err.ruleName)}\``)
+            return
+          }
+
+          console.log('gamerule enable ERROR', err)
+          message.channel.send('An error occured while trying to enable a gamerule')
+        }
       } else if (action === 'disable') {
-        // TODO
+        const ruleName = args[1]
+        try {
+          await session.gameRules.setRule(ruleName, false)
+          await showGameRule({ session }, message, ruleName)
+        } catch (err) {
+          if (err instanceof errors.InvalidGameRuleError) {
+            message.channel.send(`Invalid gamerule \`${utils.sanitizeCode(err.ruleName)}\``)
+            return
+          }
+
+          console.log('gamerule disable ERROR', err)
+          message.channel.send('An error occured while trying to disable a gamerule')
+        }
       } else if (action === 'show') {
-        // TODO
+        const ruleName = args[1]
+        try {
+          await showGameRule({ session }, message, ruleName)
+        } catch (err) {
+          if (err instanceof errors.InvalidGameRuleError) {
+            message.channel.send(`Invalid gamerule \`${utils.sanitizeCode(err.ruleName)}\``)
+            return
+          }
+
+          console.log('gamerule show ERROR', err)
+          message.channel.send('An error occured while trying to display a gamerule')
+        }
       } else {
         message.channel.send('Invalid action name, check `help gamerule` for the usage information')
       }

@@ -1,6 +1,6 @@
-export default function load({registerCommand: register, registerRaw: onMsg}) {
+export default function load({ registerRaw: onMsg }) {
   onMsg((bot, message, command) => {
-    const { author } = message;
+    const { author } = message
 
     if (author.bot) {
       return

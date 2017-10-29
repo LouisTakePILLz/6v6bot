@@ -1,4 +1,4 @@
-const defaultRuleSet = {
+const gamerules = {
   randomLeaders: {
     type: Boolean,
     helpText: 'Picks random team leaders upon intializing a new game session (during setup)',
@@ -11,4 +11,4 @@ const defaultRuleSet = {
   }
 }
 
-export default defaultRuleSet
+export default gamerules
