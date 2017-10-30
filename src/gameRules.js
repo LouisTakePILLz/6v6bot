@@ -3,7 +3,13 @@
 function transformGameRules(rules) {
   const newRules = {}
   for (const ruleName in rules) {
-    newRules[ruleName.toLowerCase()] = { ...rules[ruleName], ruleName }
+    const rule = rules[ruleName]
+    newRules[ruleName.toLowerCase()] = {
+      ...rule,
+      ruleName,
+      defaultEnabled: rule.enabled,
+      defaultValue: rule.value
+    }
   }
 
   return newRules

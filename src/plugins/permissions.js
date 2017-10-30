@@ -347,8 +347,7 @@ export default function load(api) {
   register('perm', {
     desc: 'Manages permissions',
     perm: `Requires \`${constants.PERM_PERMISSIONS}\``,
-    extra: `**perm** <action>
-**perm list** [<page>]
+    extra: `**perm list** [<page>]
 **perm grant|revoke role|user** <flake_id> <permission_node>
 **perm clear role|user** <flake_id>
 **perm show user|role** <flake_id> [<page>]`

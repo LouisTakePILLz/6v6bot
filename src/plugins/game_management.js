@@ -18,11 +18,11 @@ async function showGameRule({ session }, message, ruleName) {
     .setDescription('__**Description**__\n' + rule.helpText)
     .addField('**Enabled**', '`' + (rule.enabled || false) + '`', false)
 
-  let defaults = `Enabled: \`${rule.enabled || false}\``
+  let defaults = `Enabled: \`${rule.defaultEnabled || false}\``
 
   if (rule.type !== Boolean) {
     embed.addField('**Value**', '`' + utils.sanitizeCode(rule.value || 'null') + '`', false)
-    defaults += `\nValue: \`${rule.value || 'null'}\``
+    defaults += `\nValue: \`${rule.defaultValue || 'null'}\``
   }
 
   embed.addField('**Defaults**', defaults, false)
@@ -81,7 +81,8 @@ export default function load(api) {
   } = api
 
   permissions.registerPermission(constants.PERM_ADMIN, 'Allows administrating game sessions')
-  permissions.registerPermission(constants.PERM_SETUP, 'Allows setting up game sessions')
+  permissions.registerPermission(constants.PERM_SETUP, 'Allows setting up and terminating game sessions')
+  permissions.registerPermission(constants.PERM_GAMERULE, 'Allows configuring the game rules')
   permissions.registerPermission(constants.PERM_SETLEADER, 'Allows setting team leaders')
 
   /*api.bot.on('voiceStateUpdate', (oldMember, newMember) => {
@@ -248,6 +249,10 @@ export default function load(api) {
         return
       }
 
+      const teamLeader = session.teams[teamName].leader
+      const enemyTeam = teamName === 'team1' ? 'team2' : 'team1'
+      const enemyLeader = session.teams[enemyTeam].leader
+
       let targetMember
       let msg
 
@@ -263,18 +268,17 @@ export default function load(api) {
         )
         const memberPool = [...lobbyVoiceChannel.members.values()]
 
-        const { member: teamLeader } = session.teams[teamName].leader
-        if (teamLeader != null) {
-          const teamLeaderIndex = memberPool.findIndex(x => x.id === teamLeader.id)
+        // Remove the current team leader from the pool
+        if (teamLeader.member != null) {
+          const teamLeaderIndex = memberPool.findIndex(x => x.id === teamLeader.member.id)
           if (~teamLeaderIndex) {
             memberPool.splice(teamLeaderIndex, 1)
           }
         }
 
-        const enemyTeam = teamName === 'team1' ? 'team2' : 'team1'
-        const { member: enemyLeader } = session.teams[enemyTeam].leader
-        if (enemyLeader != null) {
-          const enemyLeaderIndex = memberPool.findIndex(x => x.id === enemyLeader.id)
+        // Remove the enemy team leader from the pool
+        if (enemyLeader.member != null) {
+          const enemyLeaderIndex = memberPool.findIndex(x => x.id === enemyLeader.member.id)
           if (~enemyLeaderIndex) {
             memberPool.splice(enemyLeaderIndex, 1)
           }
@@ -296,6 +300,11 @@ export default function load(api) {
         targetMember = randomMember
       } else {
         targetMember = utils.resolveMember(message.guild, mention)
+
+        if (enemyLeader.member != null && targetMember.id === enemyLeader.member.id) {
+          message.channel.send('You can\'t set the same team leader for both teams')
+          return
+        }
 
         if (targetMember == null) {
           message.channel.send(constants.MSG_INVALID_TARGET_MEMBER)
@@ -407,7 +416,7 @@ export default function load(api) {
         (team2Leader != null && message.member.id !== team2Leader.id)
       )
     ) {
-      message.channel.send('Can\'t add players to team, you are not the team leader')
+      message.channel.send('Can\'t add players to team, as you are not the team leader')
       return
     }
 

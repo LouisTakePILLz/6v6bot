@@ -45,12 +45,12 @@ const GameSessionWrapper = env => class GameSession {
     this.teams[teamName].leader = { member: randomMember }
   }
 
-  _pickRandomHeroes(teamName) {
+  async _pickRandomHeroes(teamName) {
     if (teamName !== 'team1' && teamName !== 'team2') {
       throw new errors.InvalidTeamNameError(teamName)
     }
 
-    const noLimits = this.gameRules.isEnabled('ow_noLimits')
+    const noLimits = await this.gameRules.isEnabled('ow_noLimits')
 
     const heroPool = Object.keys(constants.OW_HERO_NAMES)
 
@@ -95,7 +95,7 @@ const GameSessionWrapper = env => class GameSession {
         return
       }
 
-      if (this.teams[teamName].member.size >= 5) {
+      if (this.teams[teamName].members.size >= 5) {
         reject(new errors.TeamFullError())
         return
       }
@@ -148,7 +148,7 @@ const GameSessionWrapper = env => class GameSession {
       await env.guildSettings.getVoiceChannelId(this.guild.id, this.cmdChannel.id, 'team2')
     )
 
-    const forceVoice = this.gameRules.isEnabled('forceVoice')
+    const forceVoice = await this.gameRules.isEnabled('forceVoice')
 
     const moveToVoiceChannel = async (member, voiceChannel) => {
       if (member == null) {
@@ -163,10 +163,10 @@ const GameSessionWrapper = env => class GameSession {
     const promises = [
       // Move Team 1
       moveToVoiceChannel(this.teams.team1.leader.member, team1VoiceChannel),
-      ...[...this.teams.team1.members.values].map(([, { member }]) => moveToVoiceChannel(member, team1VoiceChannel)),
+      ...[...this.teams.team1.members.entries()].map(([, { member }]) => moveToVoiceChannel(member, team1VoiceChannel)),
       // Move Team 2
       moveToVoiceChannel(this.teams.team2.leader.member, team2VoiceChannel),
-      ...[...this.teams.team2.members.values].map(([, { member }]) => moveToVoiceChannel(member, team2VoiceChannel)),
+      ...[...this.teams.team2.members.entries()].map(([, { member }]) => moveToVoiceChannel(member, team2VoiceChannel)),
     ]
 
     await Promise.all(promises)
@@ -204,10 +204,10 @@ const GameSessionWrapper = env => class GameSession {
     const promises = [
       // Move Team 1
       moveToLobby(this.teams.team1.leader.member),
-      ...[...this.teams.team1.members].map(([, { member }]) => moveToLobby(member)),
+      ...[...this.teams.team1.members.entries()].map(([, { member }]) => moveToLobby(member)),
       // Move Team 2
       moveToLobby(this.teams.team2.leader.member),
-      ...[...this.teams.team2.members].map(([, { member }]) => moveToLobby(member)),
+      ...[...this.teams.team2.members.entries()].map(([, { member }]) => moveToLobby(member)),
     ]
 
     await Promise.all(promises)
@@ -223,7 +223,7 @@ const GameSessionWrapper = env => class GameSession {
       this._resetTeams()
     }
 
-    if (this.gameRules.isEnabled('randomLeaders')) {
+    if (await this.gameRules.isEnabled('randomLeaders')) {
       const memberPool = [...lobbyVoiceChannel.members.values()]
       this._pickRandomTeamLeader('team1', memberPool)
       this._pickRandomTeamLeader('team2', memberPool)
@@ -236,7 +236,7 @@ const GameSessionWrapper = env => class GameSession {
     try {
       await this.moveMembersToChannels()
 
-      if (this.gameRules.isEnabled('ow_mysteryHeroes')) {
+      if (await this.gameRules.isEnabled('ow_mysteryHeroes')) {
         this._pickRandomHeroes('team1')
         this._pickRandomHeroes('team2')
       }

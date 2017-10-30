@@ -56,14 +56,15 @@ const GameRuleManagerWrapper = (env: { db: MongoClient }) => class GameRuleManag
 
     const rule = (await this.getRules()).get(normalizedRuleName)
     if (rule != null) {
-      return { ...defaultRule, rule }
+      return { ...defaultRule, ...rule }
     }
 
     return defaultRule
   }
 
   async isEnabled(ruleName: string) {
-    return (await this.getRule(ruleName)).enabled
+    const rule = await this.getRule(ruleName)
+    return rule.enabled == null ? rule.defaultEnabled : rule.enabled
   }
 
   async setEnabled(ruleName: string, value: boolean) {
