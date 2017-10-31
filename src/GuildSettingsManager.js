@@ -162,7 +162,7 @@ const GuildSettingsManagerWrapper = env => class GuildSettingsManager {
     } else if (channelSetting === 'team2') {
       settingQuery = { setting: 'voiceChannel', teamName: 'team2' }
     } else {
-      throw new Error('Invalid channel setting')
+      throw new Error(`Invalid channel setting: ${channelSetting}`)
     }
 
     const registered = await this.isCommandChannelRegistered(guildId, cmdChannelId)

@@ -75,11 +75,8 @@ MongoClient.connect(MONGODB_CONNECTION, (err, db) => {
   bot.on('message', (message) => {
     const mentionPattern = /^<@!?(\d+)> /g
     const matches = mentionPattern.exec(message.content)
-    if (matches == null) {
-      return
-    }
+    const [match, memberId] = matches || []
 
-    const [match, memberId] = matches
     if (memberId === bot.user.id) {
       const args = [...getCommand(message.content.substr(match.length))]
       const cmd = args.shift().toLowerCase().trim()

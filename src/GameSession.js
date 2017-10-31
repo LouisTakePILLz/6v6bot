@@ -88,32 +88,36 @@ const GameSessionWrapper = env => class GameSession {
     })
   }
 
-  addToTeam(teamName, member) {
-    return new Promise((resolve, reject) => {
-      if (teamName !== 'team1' && teamName !== 'team2') {
-        reject(new errors.InvalidTeamNameError(teamName))
-        return
-      }
+  async addToTeam(member, teamName) {
+    if (teamName !== 'team1' && teamName !== 'team2') {
+      throw new errors.InvalidTeamNameError(teamName)
+    }
 
-      if (this.teams[teamName].members.size >= 5) {
-        reject(new errors.TeamFullError())
-        return
-      }
+    if (member.id === this.teams.team1.leader.member.id ||
+      member.id === this.teams.team2.leader.member.id ||
+      this.teams.team1.members.has(member.id) ||
+      this.teams.team2.members.has(member.id)
+    ) {
+      throw new errors.DuplicatePlayerError('The target member is already on a team')
+    }
 
-      if (member.id === this.teams.team1.leader.member.id ||
-        member.id === this.teams.team2.leader.member.id ||
-        this.teams.team1.members.has(member.id) ||
-        this.teams.team2.members.has(member.id)
-      ) {
-        throw new errors.DuplicatePlayerError('The target member is already on a team')
-      }
+    this.teams[teamName].members.set(member.id, { member })
+    await this._moveToVoiceChannel(member, teamName)
+  }
 
-      this.teams[teamName].members.set(member.id, { member })
+  async _moveToVoiceChannel(member, channelName) {
+    const lobbyVoiceChannel = utils.resolveVoiceChannel(
+      this.guild,
+      await env.guildSettings.getVoiceChannelId(this.guild.id, this.cmdChannel.id, 'lobby')
+    )
+    const targetVoiceChannel = utils.resolveVoiceChannel(
+      this.guild,
+      await env.guildSettings.getVoiceChannelId(this.guild.id, this.cmdChannel.id, channelName)
+    )
 
-      console.log(this.teams[teamName].members.keys())
-
-      resolve()
-    })
+    if (member.voiceChannelID === lobbyVoiceChannel.id) {
+      await member.setVoiceChannel(targetVoiceChannel)
+    }
   }
 
   getTurn() {
@@ -132,44 +136,6 @@ const GameSessionWrapper = env => class GameSession {
 
   setLastTurn(teamName) {
     this.lastTurn = teamName
-  }
-
-  async moveMembersToChannels() {
-    const lobbyVoiceChannel = utils.resolveVoiceChannel(
-      this.guild,
-      await env.guildSettings.getVoiceChannelId(this.guild.id, this.cmdChannel.id, 'lobby')
-    )
-    const team1VoiceChannel = utils.resolveVoiceChannel(
-      this.guild,
-      await env.guildSettings.getVoiceChannelId(this.guild.id, this.cmdChannel.id, 'team1')
-    )
-    const team2VoiceChannel = utils.resolveVoiceChannel(
-      this.guild,
-      await env.guildSettings.getVoiceChannelId(this.guild.id, this.cmdChannel.id, 'team2')
-    )
-
-    const forceVoice = await this.gameRules.isEnabled('forceVoice')
-
-    const moveToVoiceChannel = async (member, voiceChannel) => {
-      if (member == null) {
-        return
-      }
-
-      if (forceVoice || member.voiceChannelID === lobbyVoiceChannel.id) {
-        await member.setVoiceChannel(voiceChannel)
-      }
-    }
-
-    const promises = [
-      // Move Team 1
-      moveToVoiceChannel(this.teams.team1.leader.member, team1VoiceChannel),
-      ...[...this.teams.team1.members.entries()].map(([, { member }]) => moveToVoiceChannel(member, team1VoiceChannel)),
-      // Move Team 2
-      moveToVoiceChannel(this.teams.team2.leader.member, team2VoiceChannel),
-      ...[...this.teams.team2.members.entries()].map(([, { member }]) => moveToVoiceChannel(member, team2VoiceChannel)),
-    ]
-
-    await Promise.all(promises)
   }
 
   async moveMembersToLobby() {
@@ -201,16 +167,19 @@ const GameSessionWrapper = env => class GameSession {
       }
     }
 
-    const promises = [
-      // Move Team 1
+    const team1Promises = [
       moveToLobby(this.teams.team1.leader.member),
-      ...[...this.teams.team1.members.entries()].map(([, { member }]) => moveToLobby(member)),
-      // Move Team 2
-      moveToLobby(this.teams.team2.leader.member),
-      ...[...this.teams.team2.members.entries()].map(([, { member }]) => moveToLobby(member)),
+      ...[...this.teams.team1.members.entries()].map(([, { member }]) => moveToLobby(member))
     ]
 
-    await Promise.all(promises)
+    await Promise.all(team1Promises)
+
+    const team2Promises = [
+      moveToLobby(this.teams.team2.leader.member),
+      ...[...this.teams.team2.members.entries()].map(([, { member }]) => moveToLobby(member))
+    ]
+
+    await Promise.all(team2Promises)
   }
 
   async setup(shouldReset = true) {
@@ -234,7 +203,12 @@ const GameSessionWrapper = env => class GameSession {
 
   async start() {
     try {
-      await this.moveMembersToChannels()
+      if (this.teams.team1.leader.member != null) {
+        await this._moveToVoiceChannel(this.teams.team1.leader.member, 'team1')
+      }
+      if (this.teams.team2.leader.member != null) {
+        await this._moveToVoiceChannel(this.teams.team2.leader.member, 'team2')
+      }
 
       if (await this.gameRules.isEnabled('ow_mysteryHeroes')) {
         this._pickRandomHeroes('team1')

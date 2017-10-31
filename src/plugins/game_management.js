@@ -2,11 +2,12 @@ import { RichEmbed } from 'discord.js'
 import * as constants from '~/constants'
 import * as errors from '~/errors'
 import * as utils from '~/utils'
-import gameRules from '~/gameRules'
+import { gameRules, gameRuleValueTypes } from '~/gameRules'
 
 const GAMERULES_PER_PAGE = 5
 
 const MSG_NO_GAME_SESSION = 'No on-going game session, use the `setup` command to initialize the game session'
+const MSG_GAME_SESSION_STARTED = 'Game session started!'
 
 async function showGameRule({ session }, message, ruleName) {
   const rule = await session.gameRules.getRule(ruleName)
@@ -20,8 +21,10 @@ async function showGameRule({ session }, message, ruleName) {
 
   let defaults = `Enabled: \`${rule.defaultEnabled || false}\``
 
-  if (rule.type !== Boolean) {
-    embed.addField('**Value**', '`' + utils.sanitizeCode(rule.value || 'null') + '`', false)
+  const value = rule.value == null ? rule.defaultValue : rule.value
+
+  if (rule.type !== gameRuleValueTypes.boolean) {
+    embed.addField('**Value**', '`' + utils.sanitizeCode(value == null ? 'null' : value) + '`', false)
     defaults += `\nValue: \`${rule.defaultValue || 'null'}\``
   }
 
@@ -159,9 +162,12 @@ export default function load(api) {
           }
 
           if (err instanceof errors.InvalidGameRuleValueError) {
-            if (err.ruleType === Boolean) {
+            if (err.ruleType === gameRuleValueTypes.boolean) {
               message.channel.send(`Invalid value \`${utils.sanitizeCode(err.ruleValue)}\`, possible values: \`true\`, \`false\``)
+              return
             }
+
+            message.channel.send(`Invalid value \`${utils.sanitizeCode(err.ruleValue)}\``)
             return
           }
 
@@ -432,57 +438,112 @@ export default function load(api) {
       return
     }
 
+    const {
+      value: maxMembers,
+      enabled: maxMembersEnabled
+    } = await session.gameRules.getRule('maxTeamMembers')
+    const autoStart = await session.gameRules.isEnabled('autoStart')
+
     const leaderTeamName = message.member.id === team1Leader.id ? 'team1' : 'team2'
     const enemyTeamName = leaderTeamName === 'team1' ? 'team2' : 'team1'
 
     if (teamName != null) {
       // Forcefully pick user
       const adminGranted = await permissions.checkPermission(message, constants.PERM_ADMIN)
-      if (adminGranted) {
-        if (constants.TEAM_NAMES[teamName] == null) {
-          message.channel.send(constants.MSG_INVALID_TEAM_NAME)
+      if (!adminGranted) {
+        message.channel.send('You don\'t have permission to force team picks')
+        return
+      }
+
+      if (constants.TEAM_NAMES[teamName] == null) {
+        message.channel.send(constants.MSG_INVALID_TEAM_NAME)
+        return
+      }
+
+      if (maxMembersEnabled && session.teams[teamName].members.size >= maxMembers) {
+        message.channel.send(`Cant pick; ${constants.TEAM_NAMES[teamName]} is full`)
+        return
+      }
+
+      try {
+        let msg = `${targetMember} was added to ${constants.TEAM_NAMES[teamName]}`
+
+        await session.addToTeam(targetMember, teamName)
+
+        if (session.started) {
+          message.channel.send(msg)
           return
         }
-        try {
-          await session.addToTeam(teamName, targetMember)
-          message.channel.send(
-            `${targetMember} was added to ${constants.TEAM_NAMES[teamName]}\n` +
-            `It's ${session.teams[session.getTurn()].leader.member}'s turn to pick`
-          )
-        } catch (err) {
-          if (err instanceof errors.DuplicatePlayerError) {
-            message.channel.send(`${targetMember} is already on a team`)
+
+        if (
+          maxMembersEnabled &&
+          session.teams.team1.members.size >= maxMembers &&
+          session.teams.team2.members.size >= maxMembers
+        ) {
+          if (autoStart) {
+            message.channel.send(msg)
+            await session.start()
+            displayTeams({ session }, message.channel, MSG_GAME_SESSION_STARTED)
             return
           }
 
-          if (err instanceof errors.TeamFullError) {
-            message.channel.send('The team is full')
-            return
-          }
-
-          console.log('pick player ERROR', err)
-          message.channel.send('An error occured while trying to add a user to a team')
+          msg += '\nThe teams are now complete, use the `start` command to start the game session'
+        } else {
+          msg += `\nIt's ${session.teams[session.getTurn()].leader.member}'s turn to pick`
         }
-      } else {
-        message.channel.send('You don\'t have permission to force team picks')
+
+        message.channel.send(msg)
+      } catch (err) {
+        if (err instanceof errors.DuplicatePlayerError) {
+          message.channel.send(`${targetMember} is already on a team`)
+          return
+        }
+
+        console.log('pick player ERROR', err)
+        message.channel.send('An error occured while trying to add a user to a team')
       }
     } else {
-      // Pick user as team leader
       const turnTeamName = session.getTurn()
       if (turnTeamName !== leaderTeamName) {
         message.channel.send(`It's currently ${session.teams[turnTeamName].leader.member}'s turn to pick`)
         return
       }
 
+      if (maxMembersEnabled && session.teams[leaderTeamName].members.size >= maxMembers) {
+        message.channel.send('Cant pick; your team is full')
+        return
+      }
+
       try {
-        await session.addToTeam(leaderTeamName, targetMember)
+        let msg = `${targetMember} was added to ${constants.TEAM_NAMES[leaderTeamName]}`
+
+        await session.addToTeam(targetMember, leaderTeamName)
         session.setLastTurn(leaderTeamName)
 
-        let msg = `${targetMember} was added to ${constants.TEAM_NAMES[leaderTeamName]}\n`
-        if (session.getTurn() === turnTeamName) {
-          msg += `It's still ${session.teams[leaderTeamName].leader.member}'s turn to pick`
+        if (session.started) {
+          message.channel.send(msg)
+          return
+        }
+
+        if (maxMembersEnabled &&
+          session.teams.team1.members.size >= maxMembers &&
+          session.teams.team2.members.size >= maxMembers
+        ) {
+          if (autoStart) {
+            message.channel.send(msg)
+            await session.start()
+            displayTeams({ session }, message.channel, MSG_GAME_SESSION_STARTED)
+            return
+          }
+
+          msg += '\nThe teams are now complete, use the `start` command to start the game session'
         } else {
-          msg += `It's ${session.teams[enemyTeamName].leader.member}'s turn to pick`
+          // eslint-disable-next-line no-lonely-if
+          if (session.getTurn() === turnTeamName) {
+            msg += `\nIt's still ${session.teams[leaderTeamName].leader.member}'s turn to pick`
+          } else {
+            msg += `\nIt's ${session.teams[enemyTeamName].leader.member}'s turn to pick`
+          }
         }
 
         message.channel.send(msg)
@@ -549,7 +610,7 @@ export default function load(api) {
       try {
         await session.start()
 
-        displayTeams({ session }, message.channel, 'Game session started!\n')
+        displayTeams({ session }, message.channel, MSG_GAME_SESSION_STARTED + '\n')
       } catch (err) {
         console.log('start game session ERROR', err)
 
@@ -645,7 +706,7 @@ export default function load(api) {
         await session.setup()
         let msg = 'Game session initialized!'
 
-        if (session.gameRules.isEnabled('randomLeaders')) {
+        if (await session.gameRules.isEnabled('randomLeaders')) {
           msg += `\n${session.teams.team1.leader.member} was randomly chosen as leader for ${constants.TEAM_NAMES.team1}`
                + `\n${session.teams.team2.leader.member} was randomly chosen as leader for ${constants.TEAM_NAMES.team2}`
                + `\n\n${session.teams[session.getTurn()].leader.member} gets to pick first`

@@ -5,7 +5,7 @@ import type { MongoClient } from 'mongodb'
 
 import * as errors from '~/errors'
 import * as utils from '~/utils'
-import defaultGameRules from '~/gameRules'
+import { gameRules, gameRuleValueTypes } from '~/gameRules'
 
 type Rule = {|
   value?: ?any,
@@ -34,8 +34,9 @@ const GameRuleManagerWrapper = (env: { db: MongoClient }) => class GameRuleManag
       const docs = await cur.toArray()
 
       for (const doc of docs) {
-        if (defaultGameRules[doc.ruleName] != null) {
-          this.rules.set(doc.ruleName, { enabled: doc.enabled, value: doc.value })
+        const normalizedRuleName = doc.ruleName.toLowerCase()
+        if (gameRules[normalizedRuleName] != null) {
+          this.rules.set(normalizedRuleName, { enabled: doc.enabled, value: doc.value })
         }
       }
     } catch (err) {
@@ -48,7 +49,7 @@ const GameRuleManagerWrapper = (env: { db: MongoClient }) => class GameRuleManag
 
   async getRule(ruleName: string) {
     const normalizedRuleName = ruleName.toLowerCase()
-    const defaultRule = defaultGameRules[normalizedRuleName]
+    const defaultRule = gameRules[normalizedRuleName]
 
     if (defaultRule == null) {
       throw new errors.InvalidGameRuleError(ruleName)
@@ -69,7 +70,7 @@ const GameRuleManagerWrapper = (env: { db: MongoClient }) => class GameRuleManag
 
   async setEnabled(ruleName: string, value: boolean) {
     const normalizedRuleName = ruleName.toLowerCase()
-    const defaultRule = defaultGameRules[normalizedRuleName]
+    const defaultRule = gameRules[normalizedRuleName]
 
     if (defaultRule == null) {
       throw new errors.InvalidGameRuleError(ruleName)
@@ -86,38 +87,52 @@ const GameRuleManagerWrapper = (env: { db: MongoClient }) => class GameRuleManag
     const query = {
       guildId: this.gameSession.guild.id,
       cmdChannelId: this.gameSession.cmdChannel.id,
-      ruleName
+      ruleName: defaultRule.ruleName
     }
 
     try {
       await env.db.collection('gamerules').update(query, { $set: { enabled: boolValue } }, { upsert: true })
     } catch (err) {
-      console.log('setRule DB ERROR', err)
+      console.log('setEnabled DB ERROR', err)
       throw new errors.DbError(err)
     }
   }
 
   async setRule(ruleName: string, value: any) {
-    const normalizedRuleName = ruleName.toLowerCase()
-    const defaultRule = defaultGameRules[normalizedRuleName]
+    const rule = await this.getRule(ruleName)
 
-    if (defaultRule == null) {
-      throw new errors.InvalidGameRuleError(ruleName)
+    if (typeof (rule.validate) === 'function') {
+      rule.validate(value)
     }
 
-    if (typeof (defaultRule.validate) === 'function') {
-      defaultRule.validate(value)
+    if (rule.type === gameRuleValueTypes.boolean) {
+      await this.setEnabled(ruleName, value)
+      return
     }
 
-    const rules = await this.getRules()
-
-    if (defaultRule.type === Boolean) {
-      await this.setEnabled(normalizedRuleName, value)
-    } else if (defaultRule.type === String) {
-      rules.set(normalizedRuleName, { ...rules.get(normalizedRuleName), value })
-      await this.setEnabled(normalizedRuleName, true)
+    if (rule.type === gameRuleValueTypes.string) {
+      rule.value = value
+    } else if (rule.type === gameRuleValueTypes.number) {
+      rule.value = Number(value)
+    } else if (rule.type === gameRuleValueTypes.integer) {
+      rule.value = Number(value) | 0
     } else {
-      throw new Error(`Unsupported rule type: ${defaultRule.type && defaultRule.type.name}`)
+      throw new Error(`Unsupported rule type: ${rule.type && rule.type.name}`)
+    }
+
+    (await this.getRules()).set(rule.ruleName, { enabled: rule.enabled, value: rule.value })
+
+    const query = {
+      guildId: this.gameSession.guild.id,
+      cmdChannelId: this.gameSession.cmdChannel.id,
+      ruleName: rule.ruleName
+    }
+
+    try {
+      await env.db.collection('gamerules').update(query, { $set: { enabled: true, value: rule.value } }, { upsert: true })
+    } catch (err) {
+      console.log('setRule DB ERROR', err)
+      throw new errors.DbError(err)
     }
   }
 }

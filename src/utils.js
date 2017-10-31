@@ -1,6 +1,6 @@
 export function sanitizeCode(input) {
   if (typeof input !== 'string') {
-    return null
+    return sanitizeCode(input + '')
   }
 
   return input.replace(/`/g, '\'')

@@ -1,3 +1,5 @@
+import * as errors from '~/errors'
+
 /* eslint guard-for-in: 0 */
 
 function transformGameRules(rules) {
@@ -15,33 +17,51 @@ function transformGameRules(rules) {
   return newRules
 }
 
-const gamerules = transformGameRules({
+const types = {
+  boolean: 0,
+  string: 1,
+  number: 2,
+  integer: 3
+}
+
+export const gameRules = transformGameRules({
   randomLeaders: {
-    type: Boolean,
+    type: types.boolean,
     helpText: 'Picks random team leaders upon intializing a new game session (during setup)',
     enabled: true
   },
-  forceVoice: {
-    type: Boolean,
-    helpText: 'Forces everybody to move to their respective team channel, regardless of which voice channel they\'re currently in',
-    enabled: false
+  autoStart: {
+    type: types.boolean,
+    helpText: 'Automatically starts the game session upon reaching the team member limit',
+    enabled: true
+  },
+  maxTeamMembers: {
+    type: types.integer,
+    helpText: 'Controls the number of teammates that can be picked on each team (excludes the team leader)',
+    enabled: true,
+    value: 5,
+    validate(value) {
+      if (value <= 0) {
+        throw new errors.GameruleValidationError('the value has to be greater than 0')
+      }
+    }
   },
   ow_mysteryHeroes: {
-    type: Boolean,
+    type: types.boolean,
     helpText: 'Selects random heroes upon starting the game',
     enabled: false
   },
   /*
   ow_mysteryComps: {
-    type: Boolean,
+    type: types.boolean,
     helpText: 'Selects random (standard) team compositions upon starting the game'
   },
   */
   ow_noLimits: {
-    type: Boolean,
+    type: types.boolean,
     helpText: 'Controls whether multiple of the same heroes can be picked',
     enabled: false
   }
 })
 
-export default gamerules
+export const gameRuleValueTypes = types

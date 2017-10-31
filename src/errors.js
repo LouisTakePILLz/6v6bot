@@ -44,8 +44,6 @@ export class InvalidTeamNameError extends Error {
   }
 }
 
-export class TeamFullError extends GenericError {}
-
 export class DuplicatePlayerError extends GenericError {}
 
 export class NotEnoughPlayersError extends GenericError {}
